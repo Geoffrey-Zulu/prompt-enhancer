@@ -4,12 +4,13 @@ A VS Code extension that turns rough notes into structured, context-rich prompts
 or in the chat panel.
 
 Design and build order live in [tdd.md](tdd.md); current state and what to do next are in
-[tasks.md](tasks.md). **Phases 1–4 are complete**: set a key for any of the three providers and
-either press the keybinding to rewrite a selection in place, or ask `@enhance` in the chat panel.
-Phase 5 is evals, integration tests, and packaging.
+[tasks.md](tasks.md). **All five phases are built.** What remains needs things a coding session
+cannot supply: API keys for OpenAI and Google AI to close Phase 3's acceptance bar and record the D10
+pass rates, and a Marketplace publisher ID to ship.
 
-> The user-facing README, including the privacy disclosure required for the Marketplace listing,
-> is written in Phase 5. This file is developer setup only.
+> The user-facing README — including the §13 privacy disclosure — is
+> [extension/README.md](extension/README.md), which is what ships in the `.vsix`. This file is
+> developer setup only.
 
 ## Layout
 
@@ -17,7 +18,7 @@ Phase 5 is evals, integration tests, and packaging.
 |---|---|
 | `extension/` | the VS Code extension — the publishable artifact |
 | `packages/prompts/` | the enhancement prompt, single source of truth (TDD D3) |
-| `evals/` | golden set for the §10 quality bar (Phase 5) |
+| `evals/` | the §10 golden set and runner — needs a real key, so it is run deliberately |
 
 The extension is BYOK-only and provider-agnostic by design: supply an **Anthropic, OpenAI, or
 Google AI** key and it calls that provider directly. The provider follows from the key's prefix, and
@@ -79,6 +80,28 @@ PROMPT_ENHANCER_LIVE=1 ANTHROPIC_API_KEY=... OPENAI_API_KEY=... GOOGLE_API_KEY=.
 ```
 
 It names any provider it could not cover and fails on a partial run.
+
+### Integration tests
+
+```bash
+pnpm --filter prompt-enhancer test:integration
+```
+
+Downloads a real VS Code and runs 17 tests inside it — the single-undo-step replace, the
+document-changed guard, the empty-result refusal, the chat delivery commands, and the contributions
+matching their handlers. These are the §9.1 promises about someone's file, and a stubbed `vscode`
+module can only confirm which API we called, not what the editor then did.
+
+### Goldens (§10)
+
+```bash
+ANTHROPIC_API_KEY=... pnpm --filter @prompt-enhancer/evals run eval -- --provider anthropic
+pnpm --filter @prompt-enhancer/evals run eval -- --replay recording.json   # no key, no tokens
+```
+
+17 goldens across the three modes, scored on structural properties rather than exact text, reported
+against the template sha256 plus the provider and model that produced it. `--record` saves a run so a
+scoring change can be re-checked without re-spending.
 
 ## Run the extension
 

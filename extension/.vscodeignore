@@ -4,6 +4,12 @@
 node_modules/**
 src/**
 test/**
+# The integration suite's compiled output. Real emitted JavaScript, so unlike
+# src/ it is not caught by the *.ts rule below — and it must not ship: it exists
+# only so mocha can run inside a downloaded VS Code.
+out/**
+integration/**
+.vscode-test/**
 .vscode/**
 **/*.ts
 !dist/**/*.d.ts

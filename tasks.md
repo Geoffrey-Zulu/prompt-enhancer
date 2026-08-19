@@ -3,14 +3,22 @@
 Working task list for the build order in [tdd.md](tdd.md) §11. Read the TDD first; this file
 tracks state, not design. Section references below (§) point at the TDD.
 
-**Current state:** Phases 3 and 4 complete on `feature/phase-3-providers`, open as a pull request
-into `dev`. Remote is `github.com/Geoffrey-Zulu/prompt-enhancer`; `dev` is the default branch and
-holds Phases 1–2; `main` holds the baseline only, because nothing is production-ready until Phase 5.
-**Next up:** Phase 5 — evals, integration tests, packaging. **Branch it from `dev`** (tdd.md §13).
+**Current state:** Phase 5 complete except the parts that need keys or a publisher account, on
+`feature/phase-5-evals-ci`. Remote is `github.com/Geoffrey-Zulu/prompt-enhancer`; `dev` is the
+default branch and holds Phases 1–4; `main` holds the baseline only.
+**Next up:** nothing is blocked on code. See *Owner-only / external steps*.
 
-**One acceptance bar is unmet and cannot be met from a coding session:** Phase 3 requires enhancing
-the same text through all three providers, which needs an OpenAI key and a Google AI key. The check
-is written and runnable — `pnpm --filter prompt-enhancer test:live` — see *Open from Phase 3*.
+**Two acceptance bars are unmet, and neither can be met from a coding session:**
+
+- **Phase 3** needs an OpenAI key and a Google AI key to enhance the same text through all three
+  providers. The check is written: `pnpm --filter prompt-enhancer test:live`.
+- **Phase 5's D10 run** needs the same three keys to record three pass rates:
+  `pnpm --filter @prompt-enhancer/evals run eval -- --provider <id>`.
+
+**What is now verified against a real editor**, via 17 `@vscode/test-electron` tests: the in-place
+replace, the single undo step, the document-changed guard, the empty-result refusal, the preview
+fallback, the chat Insert/Copy commands, every contribution having a handler, and the no-key path
+leaving the buffer untouched.
 
 > **Provider model, rev 4:** the extension supports **Anthropic, OpenAI, and Google AI** (D2), each
 > an adapter behind one `ModelClient` interface (§6). **No model ID is hardcoded** — models are
@@ -197,20 +205,22 @@ structured prompt in one undo step; every failure path leaves the buffer exactly
   recorded properly. If it becomes a problem the fix is lazy `require()` per adapter, not dropping
   a provider.
 
-### Open from Phase 2 — needs a live editor
+### Open from Phase 2 — what is left after the Phase 5 integration suite
 
-None of this can be verified from a coding session; all of it is unit-tested or type-checked as far
-as it can be without an extension host, and `@vscode/test-electron` coverage is Phase 5's job (§12).
+Most of this is now covered by `extension/integration/` running in a real VS Code (§12). The items
+still open are the ones needing a real key or a network condition a test cannot create.
 
-- [ ] **Happy path:** set a real Anthropic key, enhance a rough selection, confirm the replacement
-      lands in place and <kbd>Ctrl</kbd>+<kbd>Z</kbd> **once** restores the original text.
-- [ ] **Cancel mid-request** from the progress notification — buffer must be untouched, no error.
-- [ ] **Edit the document during the request** — must open a preview instead of replacing, and say so.
-- [ ] **No-key path:** clear the key, run the command, confirm the info message and that "Set API
-      Key" opens the input box.
-- [ ] **Bad key:** paste `sk-ant-` followed by junk — must report `auth` and store nothing (check
-      that a subsequent enhance still says no key).
-- [ ] **Unsupported prefix** (`AIza…`, `sk-proj-…`) — must be refused at key-set time, nothing stored.
+- [x] **Single undo step** — verified: one undo restores the original text exactly.
+- [x] **Edit the document during the request** — verified: opens a preview, buffer byte-identical.
+- [x] **No-key path** — verified: the command leaves the document untouched and does not throw. (The
+      notification text itself is unassertable; VS Code exposes no API for reading one.)
+- [x] **Empty/whitespace result refused** — verified, and a whitespace-only selection is refused
+      before anything else happens.
+- [ ] **Happy path with a real key:** enhance a rough selection and confirm the replacement is a
+      sensible prompt. The mechanics are verified; the *content* needs a model.
+- [ ] **Cancel mid-request** from the progress notification. The integration suite covers an
+      already-cancelled token, not a cancel pressed halfway through a live stream.
+- [ ] **Bad key:** paste `sk-ant-` followed by junk — must report `auth` and store nothing.
 - [ ] **Bad model setting:** set `promptEnhancer.model` to a nonsense ID, enhance, confirm
       `model_not_found` names the model and offers Select Model.
 - [ ] **Offline** (disable networking) — must report offline, not a generic failure.
@@ -366,30 +376,75 @@ and cancellation stops it mid-stream. **Unit-tested; unverified in a live chat p
 
 ---
 
-## Phase 5 — Evals, tests, packaging ⬅ next
+## Phase 5 — Evals, tests, packaging ✅ complete except what needs keys
 
 *(was Phase 4 before rev 4, and Phase 6 before rev 2)*
 
-- [ ] `evals/goldens.jsonl` — 15+ rough → expected-shape pairs across all three modes, including:
-      a one-word selection, a ~500-line paste, a selection that is **already a good prompt**, a
-      non-English selection, and one containing prompt-injection text
-- [ ] Golden runner with `--provider` / `--model` flags, asserting *structural* properties (states a
+- [x] `evals/goldens.jsonl` — **17** rough → expected-shape pairs across all three modes, including:
+      a one-word selection, a ~500-line paste, a selection that is **already a good prompt** (in all
+      three modes), a non-English selection (in two), and one containing prompt-injection text
+- [x] Golden runner with `--provider` / `--model` flags, asserting *structural* properties (states a
       role, states the task, lists constraints, names an output format, invents nothing), reporting
       pass rate against `TEMPLATE_SHA256` **and** the provider + model that produced it
-- [ ] **Regression rule:** the already-good-prompt golden must come back materially unchanged
+- [x] **Regression rule:** the already-good-prompt golden must come back materially unchanged
 - [ ] **Per D10:** run the goldens on all three providers at least once per release and record the
-      three pass rates. Where one scores materially worse, say so in the README rather than implying
-      parity
-- [ ] `@vscode/test-electron` suite: command registration, single-undo-step replace,
+      three pass rates. **Needs keys** — the runner is written and verified against a replay fixture
+- [x] `@vscode/test-electron` suite: command registration, single-undo-step replace,
       document-changed guard, cancellation leaves the buffer untouched, participant streams,
-      no-key path shows the action
-- [ ] CI: lint, typecheck, unit + integration on PR; `vsce package` artifact on `main`. The eval
+      no-key path shows the action — **17 tests, all passing.** Two caveats, recorded honestly:
+      cancellation is covered as an already-cancelled token rather than a mid-stream cancel, and the
+      participant's streaming is unit-tested rather than driven through a live panel
+- [x] CI: lint, typecheck, unit + integration on PR; `vsce package` artifact on `main`. The eval
       runner stays out of CI — it needs real keys and spends real tokens
-- [ ] Marketplace README with the §13 privacy disclosure, **naming all three providers** and stating
+- [x] Marketplace README with the §13 privacy disclosure, **naming all three providers** and stating
       that the destination follows from the key you supply
-- [ ] `vsce` packaging — needs a real `publisher` (currently `"TBD"`) and a PAT
+- [ ] `vsce` packaging — **packaging works** (455 KB, verified); still needs a real `publisher`
+      (currently `"TBD"`), a LICENSE file, and a PAT
 
 **Acceptance:** three pass rates recorded, integration suite green, `.vsix` builds.
+**Two of three met** — the integration suite is green and the `.vsix` builds. The three pass rates
+need keys.
+
+### What shipped
+
+- **`evals/` is a new workspace package.** The runner drives the same adapters the extension ships
+  rather than the provider SDKs directly (§5: the eval runner is the third consumer of the prompt) —
+  an eval that talked to the SDKs itself would be grading code that does not ship.
+- **`--replay` scores a recorded run with no key and no tokens**, which is how a scoring change gets
+  re-checked without re-spending. It warns when the recording predates the current template, because
+  those scores are not comparable.
+- **`score.test.ts` is the part that matters.** A scoring suite that passes everything turns "the
+  goldens are green" into a statement about nothing, so each of its 15 tests feeds an output wrong in
+  exactly one way and asserts that criterion — and only that one — goes red. Verified end to end
+  against a replay fixture with two deliberate failures: 15/17, both caught with precise reasons.
+- **A `.vscodeignore`**, without which `vsce` packages three SDKs twice and ships the integration
+  build output.
+
+### What the work turned up
+
+- **A real 500-line code file exceeds the 20k char cap in §6**, so the cap — not the line count — is
+  the effective limit on a paste. The golden is sized to the largest legal input (459 lines) and says
+  so.
+- **The template's "required shape" and its "scale to the input" rule conflict on a one-word input.**
+  The design resolves that in favour of scaling down, so that golden asks only for a task and an
+  output format and leans on a length bound instead. A test caught the contradiction.
+- **A real bug, found by the integration suite:** `insertResult`, `copyResult` and `runFailureAction`
+  are registered in code rather than contributed, so nothing could activate the extension for them —
+  a chat button clicked after a window reload failed with "command not found". `package.json` now
+  declares `onCommand:` activation events for exactly those three. Invisible to the unit suite, which
+  activates nothing.
+- **`ELECTRON_RUN_AS_NODE` leaks out of a VS Code integrated terminal**, which makes the downloaded
+  `Code.exe` boot as plain Node, reject every VS Code flag and exit 9. `runTest.ts` strips it, which
+  is what lets the suite run from inside an editor as well as from CI.
+
+### Open from Phase 5
+
+- [ ] **CI has never run.** The workflow is written against the documented action APIs but nothing has
+      triggered it — the first pull request into `dev` will be its first execution. Expect to fix
+      something; `xvfb-run` for the integration job is the most likely candidate.
+- [ ] **The D10 three-provider eval run**, and recording the pass rates in the README.
+- [ ] A LICENSE file. `vsce` warns about its absence, and "UNLICENSED" is not a licence a Marketplace
+      listing can claim.
 
 ---
 
@@ -404,7 +459,17 @@ Cannot be done from a coding session:
       tdd.md §13 is a convention, not an enforced rule
 - [ ] **An API key per provider you want covered** — one is enough for Phase 2; all three are needed
       for Phase 3's acceptance and Phase 5's D10 eval run. Free or low-cost tiers are fine for
-      development; the golden runs are cents, not dollars
+      development; the golden runs are cents, not dollars.
+
+      Both checks are written and waiting:
+
+      ```bash
+      # Phase 3 acceptance: the same text through all three providers.
+      PROMPT_ENHANCER_LIVE=1 ANTHROPIC_API_KEY=… OPENAI_API_KEY=… GOOGLE_API_KEY=…         pnpm --filter prompt-enhancer test:live
+
+      # Phase 5 / D10: one run per provider, three pass rates to record.
+      ANTHROPIC_API_KEY=… pnpm --filter @prompt-enhancer/evals run eval -- --provider anthropic
+      ```
 - [ ] VS Code Marketplace publisher ID + PAT — **Phase 5**
 
 No Firebase project, billing budget, or Secret Manager entry is needed — those were proxy-only.

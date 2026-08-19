@@ -24,3 +24,6 @@ extension/out/
 
 # Downloaded VS Code for the integration suite.
 extension/.vscode-test/
+
+# vsce output.
+*.vsix
