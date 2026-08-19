@@ -439,9 +439,19 @@ need keys.
 
 ### Open from Phase 5
 
-- [ ] **CI has never run.** The workflow is written against the documented action APIs but nothing has
-      triggered it — the first pull request into `dev` will be its first execution. Expect to fix
-      something; `xvfb-run` for the integration job is the most likely candidate.
+- [x] **CI is green**, including the integration suite running a real VS Code headlessly on Linux
+      under `xvfb`. It took three attempts, and each failure was a real defect rather than a CI quirk:
+      1. `pnpm/action-setup` refuses to see the version specified both in the workflow and in
+         `packageManager`. The workflow no longer names it.
+      2. **A clean checkout could not run the tests.** `pretypecheck` built the prompts package but
+         `test` did not, so anything importing it failed on a machine without a stale `dist/`. Same
+         gap in the prompts package itself, whose `src/generated/` is gitignored. Every package now
+         has the pre-hook its siblings had.
+      3. **`reportFailure` blocked its caller.** A notification carrying a button does not settle
+         until the user clicks it, so awaiting it meant the command never finished and
+         `executeCommand` hung — the no-key integration test sat there until mocha's 30 s timeout.
+         Now fire-and-forget: 7,600ms → 135ms for that test, 12s → 4s for the suite. A unit test pins
+         it.
 - [ ] **The D10 three-provider eval run**, and recording the pass rates in the README.
 - [ ] A LICENSE file. `vsce` warns about its absence, and "UNLICENSED" is not a licence a Marketplace
       listing can claim.
