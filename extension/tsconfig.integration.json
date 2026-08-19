@@ -1,0 +1,21 @@
+{
+  "extends": "../tsconfig.base.json",
+  "compilerOptions": {
+    // The integration suite is real emitted JavaScript: mocha runs it inside a
+    // VS Code instance, so unlike the rest of this package tsc is not --noEmit
+    // here. CommonJS because that is what the extension host loads.
+    "module": "Node16",
+    "moduleResolution": "Node16",
+    "types": ["node", "vscode", "mocha"],
+    "rootDir": ".",
+    "outDir": "out",
+    "noEmit": false,
+    "declaration": false,
+    "declarationMap": false,
+    "sourceMap": true
+  },
+  // Only the entry points are listed: tsc follows the imports from here, so the
+  // reachable parts of src/ come along and the rest — including the adapters,
+  // one of whose SDKs has no CommonJS type declarations — stays out of it.
+  "include": ["integration/**/*.ts"]
+}
