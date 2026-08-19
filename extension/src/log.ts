@@ -12,12 +12,18 @@ import * as vscode from 'vscode';
 let channel: vscode.LogOutputChannel | undefined;
 
 /**
- * Anthropic keys start `sk-ant-`. The bearer and `AIza` patterns are kept as
- * cheap insurance: a stray token from anywhere must not reach the log either.
+ * One pattern per supported provider key shape (TDD §7). Anthropic's `sk-ant-`
+ * is listed before the general `sk-` so the more specific match wins — the same
+ * ordering trap as provider detection in `providers/registry.ts`.
+ *
+ * Adding a provider means adding its shape here. `extension/src/log.test.ts`
+ * asserts every supported prefix is stripped, so a forgotten pattern fails a
+ * test rather than leaking a key into the output channel.
  */
 const KEY_PATTERNS: readonly RegExp[] = [
-  /sk-ant-[A-Za-z0-9_-]{10,}/g,
-  /AIza[0-9A-Za-z_-]{10,}/g,
+  /sk-ant-[A-Za-z0-9_-]{10,}/g, // Anthropic
+  /AIza[0-9A-Za-z_-]{10,}/g, // Google AI
+  /sk-[A-Za-z0-9_-]{16,}/g, // OpenAI (incl. sk-proj-)
   /\bBearer\s+[A-Za-z0-9._~+/-]+=*/gi,
 ];
 

@@ -1,8 +1,9 @@
 # Technical Design Document: Prompt Enhancer VS Code Extension
 
 **Status:** approved for build
-**Last revised:** 2026-08-19 (rev 3 — provider switched to Anthropic)
-**History:** initial draft `59d2899`; rev 1 (design review) `be9ab11`; rev 2 (proxy cut) `cfef000`
+**Last revised:** 2026-08-19 (rev 4 — multi-provider)
+**History:** initial draft `59d2899`; rev 1 (design review) `be9ab11`; rev 2 (proxy cut) `cfef000`;
+rev 3 (Anthropic) `e80135d`
 
 ---
 
@@ -18,12 +19,14 @@ editor the rough text is replaced in place; in chat the result is streamed into 
 
 - **Editor enhancement:** keybinding replaces the highlighted text with an enhanced prompt.
 - **Chat participant:** `@enhance` handles requests in the VS Code native chat panel.
-- **BYOK, and only BYOK:** the user supplies their own Anthropic API key, stored in VS Code
-  `SecretStorage`. The extension calls the Claude Messages API directly. There is **no account, no
-  sign-in, and no server** — see §2 D1.
+- **BYOK, and only BYOK:** the user supplies their own API key for **Anthropic, OpenAI, or Google
+  AI**, stored in VS Code `SecretStorage`. The extension calls that provider directly. There is
+  **no account, no sign-in, and no server** — see §2 D1.
+- **Provider and model are the user's choice**, not the extension's: the provider follows from the
+  key, and the model is discovered from the provider rather than hardcoded (D2, D9).
 
-**Non-goals for v1:** a cloud proxy or any hosted backend, a second model provider, prompt
-libraries/history, workspace-wide context gathering, team/org accounts, telemetry.
+**Non-goals for v1:** a cloud proxy or any hosted backend, prompt libraries/history, workspace-wide
+context gathering, team/org accounts, telemetry.
 
 ---
 
@@ -34,11 +37,13 @@ Settled. Changing one is a design change, not an implementation choice.
 | # | Decision | Rationale |
 |---|---|---|
 | D1 | **BYOK only in v1. No backend at all.** | A proxy on the author's API key needs some notion of who is calling, or it is an open endpoint billing the author for strangers. Everything that machinery cost — anonymous auth, per-caller quota, spend caps, kill switch, a Firebase project, two build phases — bought one thing: a user with no key. That user is better served by `vscode.lm` (D6) than by a bill. Cut. |
-| D2 | **Single provider: Anthropic, model `claude-opus-5`, via the official `@anthropic-ai/sdk`.** Pinned in one constant, behind a `ModelClient` interface. | Gemini was pinned in rev 1 only because the cut backend was Genkit + `@genkit-ai/googleai`; that rationale died with the proxy. With BYOK the provider should be whichever key the user holds, and prompt rewriting is squarely Claude's strength. Still exactly one provider — two means two key formats, two SDKs, two sets of output quirks, twice the eval surface. A Gemini adapter behind the same interface is a clean v1.1 addition (§14), not a v1 requirement. |
+| D2 | **Three providers in v1: Anthropic, OpenAI, and Google AI**, each an adapter behind one `ModelClient` interface (§6). | The task is the simplest thing an LLM does — system prompt plus user text in, text out — so no provider has a structural advantage and the adapter surface is genuinely small. Earlier revisions pinned one provider (Gemini in rev 1 because the cut backend was Genkit; Anthropic in rev 3); with BYOK and no server, that constraint bought nothing the user wanted. The real cost is eval surface, not code — see D10. |
 | D3 | **The prompt template is a single authored file** in a shared workspace package. | Consumed by the extension and by the eval runner (§10), and it keeps the prompt independently testable. Prompt text never lives in TypeScript. |
 | D6 | **`vscode.lm` (Copilot-backed) is the v2 answer for users without a key.** | Zero cost to the author, no auth, no abuse surface — strictly better than a proxy. Requires the user to have a chat model provider, which is why it is not the v1 default. |
 | D7 | **Keybinding default is `ctrl+alt+e` / `cmd+alt+e`**, gated on `editorHasSelection`. | `ctrl+shift+e` is Focus Explorer on every platform and must not be overridden. |
 | D8 | **Editor path is non-streaming; chat path streams plain text.** | Validated output and token streaming are mutually exclusive. Each flow gets the one that fits. |
+| D9 | **Model IDs are discovered at runtime, never hardcoded.** Each adapter exposes a `listModels()` and the extension picks from it; a `promptEnhancer.model` setting overrides. | Provider model IDs churn faster than extension releases — OpenAI's and Google's both moved more than once during this document's life. A hardcoded default is a guaranteed future support ticket. Discovery reuses the models-list call that key validation already needs, so it costs one request, not a new mechanism. |
+| D10 | **The prompt template is tuned and evaluated against one primary provider; the others are supported, not guaranteed identical.** | One template across three models means it is tuned for whichever was tested. The §10 structural criteria are generic enough to mostly transfer, but "mostly" is doing real work — so goldens record which provider and model produced them, and a provider that fails the regression rule is documented, not silently shipped. |
 
 D4 and D5 covered the proxy's prompt-relay defence and its anonymous-auth identity. Both are
 withdrawn with the proxy; the numbering is left with gaps so older commits and reviews still
@@ -62,9 +67,14 @@ prompt-enhancer/
 │   │   ├── extension.ts        # activate/deactivate, registration only
 │   │   ├── commands/           # enhanceSelection, setApiKey, clearApiKey
 │   │   ├── chat/               # @enhance participant handler
+│   │   ├── providers/
+│   │   │   ├── types.ts            # ModelClient, ProviderId, ModelError
+│   │   │   ├── registry.ts         # key-prefix detection, adapter construction
+│   │   │   ├── anthropic.ts        # one adapter per provider, no shared branching
+│   │   │   ├── openai.ts
+│   │   │   └── google.ts
 │   │   ├── services/
-│   │   │   ├── SecretService.ts    # wraps context.secrets
-│   │   │   └── ClaudeClient.ts     # the one and only model call
+│   │   │   └── SecretService.ts    # wraps context.secrets, one key per provider
 │   │   └── enhance/            # orchestration shared by both entry points
 │   ├── package.json            # contributes commands, keybindings, chatParticipants
 │   └── tsup.config.ts
@@ -90,13 +100,15 @@ as a v2 workstream, not as a stub carried in the meantime.
 - **Engine:** `"engines": { "vscode": "^1.90.0" }` — the version that stabilised both the Chat
   participant API and `vscode.lm`.
 - **Build:** `tsup`, CJS output, `external: ['vscode']`, `platform: 'node'`. The `vscode` module is
-  host-injected and must never be bundled; the workspace prompts package and the Anthropic SDK are
-  both bundled in, since a `.vsix` has no `node_modules`.
-- **Runtime dependency:** `@anthropic-ai/sdk`, and nothing else. It is pure JS, bundles cleanly, and
-  handles auth headers, streaming SSE parsing, retries on 429/5xx, and typed errors — all of which
-  would otherwise be hand-rolled against a moving API.
+  host-injected and must never be bundled; the workspace prompts package and the provider SDKs are
+  bundled in, since a `.vsix` has no `node_modules`.
+- **Runtime dependencies:** the three official SDKs — `@anthropic-ai/sdk`, `openai`, and Google's
+  Gen AI SDK — and nothing else. Each handles auth headers, streaming SSE parsing, retries, and
+  typed errors; hand-rolling that three times against three moving APIs is the larger risk.
+- **Bundle size is a real cost of D2.** Three SDKs is the single biggest thing this design spends.
+  Measure the `.vsix` at the end of Phase 3 and record it; if it becomes a problem the mitigation is
+  lazy `require()` per adapter so only the active provider's SDK is loaded, not dropping providers.
 - **Secrets:** VS Code `SecretStorage` only (§7).
-- **Model:** `claude-opus-5` via `client.messages.create` / `.stream`.
 
 The entire extension is client-side. There is no infrastructure to provision, no deploy step, and
 no cost borne by the author.
@@ -113,7 +125,6 @@ export type EnhanceMode = typeof ENHANCE_MODES[number];
 
 export const TEMPLATE_VERSION = 'enhance.v1';
 export const TEMPLATE_SHA256  = '<computed at build time>';
-export const MODEL_ID         = 'claude-opus-5';
 
 export function renderEnhancePrompt(input: {
   roughText: string;
@@ -129,6 +140,11 @@ per-mode guidance — lives in that one file and none of it is embedded in TypeS
 sha256, so nothing reads from disk at runtime and the template ships correctly inside the `.vsix`.
 The generated file is not committed.
 
+This package owns prompt text and nothing else. **Provider and model configuration deliberately do
+not live here** — they are not a prompt concern, and putting them here would make the eval runner
+and the extension disagree about who chooses a model. The registry lives in
+`extension/src/providers/`, and the eval runner takes `--provider` / `--model` flags.
+
 - Both entry points — the editor command and the chat participant — call `renderEnhancePrompt`.
   The eval runner (§10) is the third consumer and the reason the sha256 is worth recording: a
   golden run is reported against the exact template bytes it tested.
@@ -139,74 +155,108 @@ The generated file is not committed.
 
 ---
 
-## 6. The model call
+## 6. Providers and the model call
 
-`client.messages.create` (editor) or `client.messages.stream` (chat). The SDK sets the `x-api-key`
-header from the key we pass it; we never construct auth headers ourselves.
+### The interface
 
-```ts
-const client = new Anthropic({ apiKey });   // key read per call from SecretStorage
-
-const response = await client.messages.create({
-  model: MODEL_ID,                          // 'claude-opus-5'
-  max_tokens: 16_000,
-  system: [{ type: 'text', text: rendered.system, cache_control: { type: 'ephemeral' } }],
-  messages: [{ role: 'user', content: rendered.user }],
-  thinking: { type: 'adaptive' },
-  output_config: { effort: 'low' },
-}, { signal: abortController.signal });
-```
-
-Four decisions in that call, each load-bearing:
-
-**No `temperature`.** Sampling parameters (`temperature`, `top_p`, `top_k`) are **rejected with a
-400** on `claude-opus-5`. Rev 2 of this document specified `temperature: 0.3`; that would not have
-run. Output shape is steered by the template's instructions instead.
-
-**`system` is a top-level parameter, not a message.** It takes a string or an array of text blocks.
-Never fake it with a `role: 'system'` message in `messages`.
-
-**Thinking stays on, at `effort: 'low'`.** Thinking is on by default on this model. It is tempting to
-pass `thinking: { type: 'disabled' }` for a rewriting task, and that is a trap: with thinking
-disabled Opus 5 can leak `<thinking>` tags into the *visible* response — which on the editor path
-would be written straight into the user's file. `effort: 'low'` keeps thinking on (no leak) while
-holding cost and latency down, and low effort is a good fit for a bounded rewriting task. Note
-`max_tokens` caps thinking **plus** response text together, hence 16 000 rather than something
-tight around the expected output.
-
-**`cache_control` on the system block.** The rendered system prompt is ~700 tokens — above this
-model's 512-token cache minimum — and byte-identical across every enhancement in the same mode. It
-caches, making repeat use roughly 90% cheaper on the prompt. It only caches while the prefix is
-stable, so nothing volatile (timestamps, selection text, counters) may ever be interpolated into
-the system block.
-
-**Reading the response.** `response.content` is an array of blocks and, with thinking on, the
-**first block is usually a `thinking` block**. `content[0].text` is therefore wrong — filter to
-`type === 'text'` and join:
+Exactly one abstraction, and every adapter implements it fully. Callers never branch on provider.
 
 ```ts
-const text = response.content
-  .filter((b): b is Anthropic.TextBlock => b.type === 'text')
-  .map((b) => b.text)
-  .join('');
+export type ProviderId = 'anthropic' | 'openai' | 'google';
+
+export interface ModelInfo { id: string; label: string }
+
+export interface ModelClient {
+  readonly provider: ProviderId;
+
+  /** Model IDs this key can actually use (D9). Also serves as key validation. */
+  listModels(signal?: AbortSignal): Promise<ModelInfo[]>;
+
+  /** Non-streaming: the editor path. Resolves to the finished prompt text. */
+  enhance(p: RenderedPrompt, model: string, signal?: AbortSignal): Promise<string>;
+
+  /** Streaming: the chat path. Yields text deltas only. */
+  enhanceStream(p: RenderedPrompt, model: string, signal?: AbortSignal): AsyncIterable<string>;
+}
 ```
 
-Three response cases must be handled explicitly rather than assumed away:
+**Adapters normalise; they do not leak.** Each adapter turns its provider's wire format, finish
+reasons, and error types into the shapes above plus the common `ModelError` (section 9). If a
+provider concept has no equivalent in the interface, handling it is the adapter's job, not the
+caller's job to know about. A `switch (provider)` anywhere outside `providers/registry.ts` is a
+design failure.
 
-| Case | Handling |
+### Which provider
+
+Detected from the key prefix, in `registry.ts`:
+
+| Prefix | Provider |
 |---|---|
-| `stop_reason: 'refusal'` | Opus 5 runs safety classifiers. Check `stop_reason` **before** reading content; report that the model declined and leave the document alone. |
-| `stop_reason: 'max_tokens'` | Output is truncated — warn, and do not replace in place. |
-| No `text` block, or joined text is empty | Treat as failure; never write an empty string over the selection. |
+| `sk-ant-` | Anthropic |
+| `AIza` | Google AI |
+| `sk-` (anything else beginning `sk-`) | OpenAI |
 
-**Input caps** (enforced before the call): `rough_text` 1–20 000 chars, `context` ≤ 2 000 chars.
-Rejecting an oversized selection client-side is what stops a whole-file selection from becoming a
-surprise bill on the user's key.
+**Order matters, and it is the one real trap here:** Anthropic keys also begin `sk-`, so `sk-ant-`
+must be tested **first**. Getting this backwards sends every Anthropic key to the OpenAI adapter,
+where it fails as a confusing 401 rather than an obvious bug. There is a unit test for exactly this.
 
-**Streaming** — the chat path uses `client.messages.stream(...)` and consumes `text` deltas
-(`content_block_delta` with `delta.type === 'text_delta'`), per D8. The editor path is
-non-streaming. On the streaming path, check `stop_reason` on the final message before treating the
-result as complete.
+An unrecognised prefix is rejected at key-set time with "That doesn't look like a supported API key"
+rather than stored and left to fail later.
+
+### Which model (D9)
+
+No model ID is hardcoded. Resolution order, per provider:
+
+1. The `promptEnhancer.model` setting, if set and non-empty. This is the escape hatch that lets a
+   brand-new model work without an extension release, and it is why no ID needs to ship at all.
+2. Otherwise the model chosen at key-set time and stored per provider, picked from `listModels()`.
+3. If neither exists, a quick-pick from `listModels()` on first use.
+
+The setting is validated on use, not on write, so typos surface as "Model `x` is not available on
+your `<provider>` key" with a Change Model action instead of being silently swallowed.
+
+**Command:** "Prompt Enhancer: Select Model" re-runs the quick-pick against the active key, so
+changing model never requires hand-editing settings.
+
+### The request
+
+Common to every adapter:
+
+- **System text goes in the provider's system slot** - Anthropic's top-level `system`, an OpenAI
+  system/developer message, Gemini's `systemInstruction`. Never concatenated into the user text.
+- **No sampling parameters on any provider.** No `temperature`, `top_p`, or `top_k`, anywhere. This
+  is not stylistic: `claude-opus-5` rejects them with a 400, and several reasoning models on the
+  other providers restrict them too. Omitting them is the only choice that is correct everywhere,
+  and the template's instructions steer output shape instead.
+- **A generous output budget.** Where a provider's cap also covers internal reasoning tokens, size
+  it for reasoning **plus** the answer, not tight around the answer.
+- **`AbortSignal` threaded through to the underlying request**, so cancellation is real rather than
+  cosmetic.
+- **Prompt caching where the provider offers it**, on the system block only. The rendered system text
+  is byte-identical across enhancements in the same mode, so it caches well - and nothing volatile
+  may ever be interpolated into it, or caching silently stops.
+
+### Reading the response
+
+Three rules, each of which exists because of a real failure mode:
+
+1. **Never assume the first content block is the answer.** On reasoning-capable models the first
+   block is often internal reasoning. Adapters must select text parts explicitly and join them, not
+   index position zero. This was a live bug in rev 3 of this document.
+2. **Never let internal reasoning reach the output.** Some models emit reasoning markup into the
+   visible response when reasoning is disabled. Adapters must leave reasoning enabled where that is
+   the safe setting, and must never return text they have not confirmed is answer content - on the
+   editor path this goes straight into the user's file.
+3. **Check the finish reason before using the content.** A truncated or declined response is a
+   failure, never something written over the selection.
+
+**Input caps** (enforced before any call, provider-independent): `rough_text` 1-20 000 chars,
+`context` <= 2 000 chars. This is what stops a whole-file selection from becoming a surprise bill on
+the user's key.
+
+**Streaming** - `enhanceStream` yields text deltas only. Each adapter filters its provider's
+non-text events out of the stream and checks the terminal finish reason before the consumer treats
+the result as complete.
 
 ---
 
@@ -214,22 +264,29 @@ result as complete.
 
 The whole of the extension's security surface, now that there is no server.
 
-- **Store:** `context.secrets.store('promptEnhancer.anthropicApiKey', key)`. Keys must **never**
-  touch `workspace.configuration`, workspace state, `globalState`, logs, or error messages. Settings
-  sync and workspace files are the two places a key must not end up.
-- **Retrieve:** `context.secrets.get(...)`, read per call, never cached in a module-level variable.
-  The `Anthropic` client is constructed per call from that key — never at module scope, and never
-  from `process.env`, so a key in the developer's environment can't silently stand in for the user's.
-- **Commands:** "Prompt Enhancer: Set API Key" (`showInputBox` with `password: true`) and
-  "Prompt Enhancer: Clear API Key".
-- **Validate on set:** one `client.models.list()` call to confirm the key works, and report the
-  result. Do not store an invalid key silently.
-- **Rotation:** setting a key overwrites. Clearing removes it, and the extension then prompts for a
-  key on next use rather than failing obscurely.
-- **Redaction:** all logging goes through a single channel that strips `sk-ant-…` patterns at the
-  boundary, so forgetting to redact at a call site is not possible (§9.3).
-- **No key present** is a normal state, not an error: the first enhancement attempt shows a message
-  with a "Set API Key" action, and links to where a free key comes from.
+- **One key per provider, stored separately:** `promptEnhancer.apiKey.anthropic`,
+  `promptEnhancer.apiKey.openai`, `promptEnhancer.apiKey.google`. A user with several keys keeps
+  them all, and switching provider does not mean re-pasting.
+- **Store via `context.secrets.store(...)` only.** Keys must **never** touch
+  `workspace.configuration`, workspace state, `globalState`, logs, or error messages. Settings sync
+  and workspace files are the two places a key must not end up - which is also why
+  `promptEnhancer.model` can be a setting and the key never can.
+- **Retrieve** with `context.secrets.get(...)`, read per call, never cached in a module-level
+  variable. Provider clients are constructed per call from that key - never at module scope, and
+  never from `process.env`, so a key in the developer's environment cannot silently stand in for the
+  user's.
+- **Active provider:** with one key stored, that is the provider. With several, the
+  `promptEnhancer.provider` setting selects; absent that, prompt once and remember.
+- **Commands:** "Set API Key" (`showInputBox` with `password: true`, provider inferred from the
+  prefix), "Clear API Key" (quick-pick which provider, or all), and "Select Model".
+- **Validate on set:** one `listModels()` call. It confirms the key works *and* populates the model
+  quick-pick in the same request. Never store an invalid key silently.
+- **Rotation:** setting a key overwrites that provider's key only. Clearing removes it, and the
+  extension prompts on next use rather than failing obscurely.
+- **Redaction:** all logging goes through a single channel that strips every supported key shape
+  (`sk-ant-...`, `sk-...`, `AIza...`) and bearer tokens at the boundary, so forgetting to redact at a
+  call site is not possible (section 9.3). Adding a provider means adding its key pattern here, and
+  a test asserts every supported prefix is redacted.
 
 ---
 
@@ -242,7 +299,8 @@ The whole of the extension's security surface, now that there is no server.
 2. **Capture:** read `activeTextEditor.selection`; capture `document.languageId`, the selection
    range, and `document.version`. Empty or whitespace-only selection → info message, no call.
 3. **Validate:** length caps and mode resolution per §5/§6.
-4. **Key:** no key in `SecretStorage` → the §7 "Set API Key" prompt, and stop.
+4. **Client:** resolve provider + model per §6/§7. No key at all → the "Set API Key" prompt, and
+   stop. Key but no model resolved → the model quick-pick, then continue.
 5. **Progress:** `vscode.window.withProgress` at `ProgressLocation.Notification`, cancellable.
    Cancellation aborts via `AbortController` and leaves the document untouched.
 6. **Apply:** a single `editBuilder.replace()` on the *original* range, in one edit so it is one
@@ -258,7 +316,9 @@ The whole of the extension's security surface, now that there is no server.
    id must match the contribution exactly.
 3. **Input:** `request.prompt` is the rough text. Mode comes from a slash command (`/code`,
    `/architecture`, `/refactor`), defaulting to `code`.
-4. **Key:** same §7 rules. Missing key is reported in the chat stream with the same action.
+4. **Client:** same §6/§7 resolution. A missing key is reported in the chat stream with the same
+   action; the active provider and model are named in the response header so the user always
+   knows which model answered.
 5. **Output:** stream with `ChatResponseStream.markdown()` as SSE chunks arrive. Honour the
    handler's `CancellationToken`.
 6. **Follow-ups:** offer "Insert into editor" and "Copy".
@@ -278,23 +338,29 @@ Rules, not suggestions — these are the behaviours tests assert.
    action button ("Set API Key", "Retry", "Open Output").
 3. **Diagnostics go to a dedicated `OutputChannel`**, with the API key redacted unconditionally at
    the logging boundary.
-4. **Mapped messages** — branch on the SDK's typed error classes, never on message strings, and
-   order the `catch` chain most-specific first:
+4. **Mapped messages.** Each adapter translates its provider's failures into one common
+   `ModelError` with a `kind`, and the UI maps `kind` to a message and an action. This is the only
+   way three providers stay presentable without the UI knowing three error taxonomies.
 
-| SDK error / condition | Message |
-|---|---|
-| `Anthropic.AuthenticationError` (401) | "That API key was rejected — check it or set a new one." + Set API Key |
-| `Anthropic.PermissionDeniedError` (403) | "The key is valid but not permitted to use this model." |
-| `Anthropic.RateLimitError` (429) | "Rate limit reached — wait a moment and retry." + Retry |
-| `Anthropic.InternalServerError` (≥500, incl. 529 overloaded) | "The Claude API is unavailable right now." + Retry |
-| `Anthropic.BadRequestError` (400) | "The request was rejected." + Open Output (the body goes to the log — this is a bug in us, not the user) |
-| `Anthropic.APIConnectionError` | "Can't reach the Claude API — check your connection." |
-| `stop_reason: 'refusal'` | "The model declined to process this text." |
-| `stop_reason: 'max_tokens'` | "The result was truncated — try a smaller selection." |
-| No key | "Add an Anthropic API key to use Prompt Enhancer." + Set API Key |
+| `ModelError.kind` | Message | Action |
+|---|---|---|
+| `auth` | "That API key was rejected - check it or set a new one." | Set API Key |
+| `forbidden` | "The key is valid but not permitted to use `<model>`." | Select Model |
+| `model_not_found` | "Model `<model>` is not available on your `<provider>` key." | Select Model |
+| `rate_limit` | "Rate limit reached - wait a moment and retry." | Retry |
+| `server` | "`<provider>` is unavailable right now." | Retry |
+| `offline` | "Can't reach `<provider>` - check your connection." | - |
+| `truncated` | "The result was truncated - try a smaller selection." | - |
+| `declined` | "The model declined to process this text." | - |
+| `bad_request` | "The request was rejected." (details to the log - this is our bug, not the user's) | Open Output |
+| `no_key` | "Add an API key to use Prompt Enhancer." | Set API Key |
 
-The SDK already retries 429 and 5xx twice with backoff before throwing, so a `RateLimitError`
-reaching this table means retries were exhausted — do not add a second retry layer around it.
+   Every message names the provider or model where one is relevant. With three providers in play,
+   "rate limit reached" without saying whose is a support question waiting to happen.
+
+   Each adapter maps by its SDK's **typed error classes**, never by matching message strings. Where
+   an SDK already retries 429 and 5xx internally, do not wrap a second retry layer around it - an
+   error reaching this table means retries are exhausted.
 
 5. **Timeout:** 30 s client-side, then abort with a retry action.
 6. **Offline** is detected and reported as offline, not as a generic failure.
@@ -312,8 +378,12 @@ Without this, every prompt change is unfalsifiable.
 - Each golden asserts *structural* properties, not exact text: the output states a role, states the
   task, lists constraints, names the expected output format, and does not invent requirements
   absent from the input.
-- The runner reports pass rate against `TEMPLATE_SHA256`, so a result is traceable to exact
-  template bytes. Any `TEMPLATE_VERSION` bump requires a run, recorded in the PR.
+- The runner reports pass rate against `TEMPLATE_SHA256` **and the provider + model it ran**, so a
+  result is traceable to exact template bytes and an exact model. Any `TEMPLATE_VERSION` bump
+  requires a run on the primary provider, recorded in the PR.
+- **Per D10, a template change must not be judged on one provider alone before release.** Run the
+  goldens on all three at least once per release and record the three pass rates. Where a
+  provider scores materially worse, say so in the README rather than implying parity.
 - **Regression rule:** the already-good-prompt golden must come back materially unchanged. An
   enhancer that inflates good prompts is worse than no enhancer.
 - The runner needs a real key and costs real tokens, so it is run deliberately, not on every commit.
@@ -337,21 +407,33 @@ Sequential. Each phase ends in a working, committed, reviewable state on its own
 6. Verify: builds clean, unit tests pass, extension activates in the Extension Development Host,
    the command renders a prompt from a live selection.
 
-**Phase 2 — BYOK end to end**
-`SecretService`, the two key commands with live validation, `ClaudeClient`, Flow A wired to the
-editor including every §9 rule, the §6 response edge cases, and the Flow A.6 document-version
-guard. This is the first shippable version — and with the proxy cut, it is the whole product minus
-chat.
+**Phase 2 — One provider end to end**
+The `ModelClient` interface and `ModelError` (§6), the registry with key-prefix detection,
+`SecretService`, the key and model commands with live validation, **one** adapter, and Flow A wired
+to the editor including every §9 rule and the Flow A.6 document-version guard. First shippable
+version.
 
-**Phase 3 — Chat participant**
-Flow B, SSE streaming, slash-command modes, follow-ups, cancellation.
+Build one adapter, not three. The interface only earns trust once a second implementation lands, and
+designing speculatively for three providers before any of them works is how abstractions go wrong in
+both directions. **Expect the interface to change in Phase 3** — that is cheaper than guessing now.
+Keep provider specifics inside the adapter so the change stays local when it comes.
 
-**Phase 4 — Evals, tests, packaging**
-Golden set and runner, `@vscode/test-electron` suite, CI, `vsce` packaging, README with the §13
-privacy disclosure.
+**Phase 3 — The other two providers**
+The remaining two adapters, the model quick-pick and `promptEnhancer.provider` / `.model` settings,
+per-provider key storage, and the redaction test covering all three key shapes. Refactor the
+interface here if the new adapters expose a bad assumption. Ends with the `.vsix` size measured and
+recorded (§4).
 
-Former Phases 4 and 5 were the Firebase backend and the proxy client. Both are withdrawn to v2
-(§14). Phase 6 is renumbered to Phase 4; no other phase changes.
+**Phase 4 — Chat participant**
+Flow B, streaming, slash-command modes, follow-ups, cancellation.
+
+**Phase 5 — Evals, tests, packaging**
+Golden set and runner with `--provider` / `--model` flags, all-three-provider run per D10,
+`@vscode/test-electron` suite, CI, `vsce` packaging, README with the §13 privacy disclosure.
+
+Phase numbering has moved twice. Rev 2 withdrew the Firebase backend and proxy client (then Phases 4
+and 5) to v2 and renumbered packaging from 6 to 4. Rev 4 inserts the second-and-third-provider work
+as Phase 3, pushing chat to 4 and packaging to 5. Older commit messages and reviews will not match.
 
 **Contribution rule (applies to every phase):** a `package.json` contribution lands in the same
 phase as its implementation. Declaring `chatParticipants` before Flow B exists would put a broken
@@ -363,16 +445,22 @@ command palette. So `promptEnhancer.setApiKey` / `clearApiKey` arrive in Phase 2
 
 ## 12. Testing
 
-- **Unit** (vitest): `renderEnhancePrompt` determinism, mode validation, length caps, HTTP error
-  mapping, response-shape edge cases from §6, key redaction in logs.
+- **Unit** (vitest): `renderEnhancePrompt` determinism, mode validation, length caps, and per
+  adapter - error mapping to `ModelError.kind`, response-shape handling from §6, and stream-delta
+  filtering. Plus two that exist because they are easy to get wrong:
+  - **key-prefix detection**, asserting `sk-ant-...` resolves to Anthropic and not OpenAI;
+  - **redaction**, asserting every supported key shape is stripped from log output.
 - **Integration** (`@vscode/test-electron`): command registration, selection replace as a single
   undo step, document-changed-during-request guard, cancellation leaves the buffer untouched, chat
   participant resolves and streams, no-key path shows the action.
 - **Evals:** the §10 golden runner, run deliberately on template changes.
-- **Manual smoke before release:** valid key, invalid key, no key, offline, rate-limited, an
-  oversized selection, and a selection edited mid-request.
+- **Manual smoke before release, per provider:** valid key, invalid key, no key, a model the key
+  can't use, offline, an oversized selection, and a selection edited mid-request. Three providers
+  makes this the longest manual pass in the project - automate what §12's integration suite can
+  cover and keep the list honest about what it can't.
 
-No backend means no emulator, no deploy testing, and no Genkit Developer UI in the loop.
+No backend means no emulator and no deploy testing. Adapter tests stub the provider SDK; only the
+golden runner and the manual pass spend real tokens.
 
 ---
 
@@ -387,12 +475,14 @@ No backend means no emulator, no deploy testing, and no Genkit Developer UI in t
 - **Publishing:** VS Code Marketplace via `vsce`. Requires a publisher ID and a PAT — an external
   step for the repo owner.
 - **Privacy disclosure (required in the README and the Marketplace listing):** the text you select
-  is sent to Anthropic's Claude API using your own API key, and nowhere else. The extension has no
-  server, collects no telemetry, and the author never sees your text or your key. The key is held
-  in the OS credential store via VS Code `SecretStorage`.
+  is sent to **whichever provider your API key belongs to** - Anthropic, OpenAI, or Google - and
+  nowhere else. The extension has no server, collects no telemetry, and the author never sees your
+  text or your key. Keys are held in the OS credential store via VS Code `SecretStorage`. Name all
+  three providers explicitly and state that the choice follows from the key you supply; a user who
+  can only send data to one vendor needs to be able to tell that from the listing.
 
-That disclosure being three sentences instead of a paragraph of caveats is the clearest measure of
-what cutting the proxy bought.
+That disclosure staying short is the clearest measure of what cutting the proxy bought - adding two
+providers cost it one clause, not a paragraph of caveats.
 
 ---
 
@@ -406,8 +496,9 @@ what cutting the proxy bought.
   mechanism. Anonymous Firebase Auth (not deprecated, and with opt-in 30-day cleanup it does not
   count toward billing quotas) is the cheapest option; GitHub OAuth is the honest one. The reason
   it was cut is that all of it exists to serve users who could instead use D6 for free.
-- **A Gemini adapter** behind the same `ModelClient` interface, selected by key prefix (`sk-ant-` →
-  Anthropic, `AIza` → Gemini). Small and well-scoped once v1 ships — the reason it is not in v1 is
-  eval surface, not difficulty.
+- **Further providers** (Azure OpenAI, Bedrock, OpenRouter, a local Ollama endpoint) - each is one
+  more `ModelClient` adapter once the interface has survived three implementations.
+- **Per-mode model selection** - a cheap fast model for `code`, a stronger one for `architecture`.
+  Deferred because it needs the D10 eval data to choose sensibly.
 - Prompt history and a saved-prompt library; workspace-aware context beyond `languageId`; team/org
   key management; usage telemetry.

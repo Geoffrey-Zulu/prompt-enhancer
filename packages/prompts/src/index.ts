@@ -29,12 +29,9 @@ export type EnhanceMode = (typeof ENHANCE_MODES)[number];
 
 export const DEFAULT_MODE: EnhanceMode = 'code';
 
-/** Input caps, enforced client-side and server-side alike (TDD §6). */
+/** Input caps, enforced before any provider call (TDD §6). Provider-independent. */
 export const MAX_ROUGH_TEXT_CHARS = 20_000;
 export const MAX_CONTEXT_CHARS = 2_000;
-
-/** The model both paths use (TDD D2). */
-export const MODEL_ID = 'claude-opus-5';
 
 export interface EnhanceInput {
   roughText: string;
