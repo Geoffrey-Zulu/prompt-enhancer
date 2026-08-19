@@ -5,7 +5,7 @@
   "version": "0.1.0",
   "private": true,
   "license": "MIT",
-  "publisher": "geoffreyzulu",
+  "publisher": "silentdrums",
   "engines": {
     "vscode": "^1.90.0",
     "node": ">=20"
