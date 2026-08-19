@@ -22,8 +22,8 @@ export async function setApiKey(services: Services): Promise<void> {
   const entered = await vscode.window.showInputBox({
     title: 'Prompt Enhancer: Set API Key',
     prompt:
-      'Paste your Anthropic API key. It is held in the OS credential store via VS Code SecretStorage, and is sent only to Anthropic.',
-    placeHolder: 'sk-ant-…',
+      'Paste an Anthropic, OpenAI, or Google AI API key. The provider follows from the key itself. It is held in the OS credential store via VS Code SecretStorage, and is sent only to the provider it belongs to.',
+    placeHolder: 'sk-ant-… · sk-… · AIza…',
     password: true,
     ignoreFocusOut: true,
   });

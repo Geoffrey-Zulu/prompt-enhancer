@@ -4,6 +4,17 @@
     // tsup does the emitting; tsc is only ever run with --noEmit here, so
     // rootDir/outDir would serve no purpose and would exclude tsup.config.ts.
     "noEmit": true,
+    // Overrides the workspace default of Node16/Node16, because a bundler — not
+    // Node — resolves this package's imports, and the typechecker should model
+    // what actually builds the code. It is also the only way to consume
+    // `@google/genai`: it declares `"type": "module"` and ships no `.d.cts`, so
+    // under Node16 resolution TypeScript treats its types as ESM and rejects
+    // the import from a CommonJS file (TS1479) even though the package does ship
+    // a CommonJS runtime build, which is what esbuild bundles.
+    //
+    // `packages/prompts` keeps Node16: tsc really does emit its CommonJS.
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
     "types": ["node", "vscode"],
     "declaration": false,
     "declarationMap": false

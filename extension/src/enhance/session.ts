@@ -3,6 +3,7 @@ import * as vscode from 'vscode';
 import { log } from '../log.js';
 import { createClient, isImplemented } from '../providers/registry.js';
 import {
+  isProviderId,
   ModelError,
   PROVIDER_LABELS,
   type ModelClient,
@@ -11,7 +12,7 @@ import {
 } from '../providers/types.js';
 import type { Services } from '../services/index.js';
 import { withDeadline } from './deadline.js';
-import { reportFailure } from './report.js';
+import { reportFailure, type Reporter } from './report.js';
 
 /**
  * Resolving "which client, which model" (TDD §6, §7) — the first step of the
@@ -29,13 +30,16 @@ export interface EnhanceSession {
   readonly model: string;
 }
 
-export async function resolveSession(services: Services): Promise<EnhanceSession | undefined> {
-  const client = await resolveClient(services);
+export async function resolveSession(
+  services: Services,
+  report: Reporter = reportFailure,
+): Promise<EnhanceSession | undefined> {
+  const client = await resolveClient(services, report);
   if (client === undefined) {
     return undefined;
   }
 
-  const model = await resolveModel(services, client);
+  const model = await resolveModel(services, client, report);
   if (model === undefined) {
     return undefined;
   }
@@ -51,15 +55,18 @@ export async function resolveSession(services: Services): Promise<EnhanceSession
  * Split out from `resolveSession` because "Select Model" needs a client in order
  * to list models but must not resolve a model first.
  */
-export async function resolveClient(services: Services): Promise<ModelClient | undefined> {
-  const provider = await resolveProvider(services);
+export async function resolveClient(
+  services: Services,
+  report: Reporter = reportFailure,
+): Promise<ModelClient | undefined> {
+  const provider = await resolveProvider(services, report);
   if (provider === undefined) {
     return undefined;
   }
 
   const apiKey = await services.secrets.getKey(provider);
   if (apiKey === undefined) {
-    await reportFailure(new ModelError('no_key', { provider }));
+    await report(new ModelError('no_key', { provider }));
     return undefined;
   }
 
@@ -67,23 +74,39 @@ export async function resolveClient(services: Services): Promise<ModelClient | u
 }
 
 /**
- * The active provider (§7): with one key stored, that is the provider; with
- * several, a remembered choice, else prompt once and remember. The
- * `promptEnhancer.provider` setting that outranks the remembered choice lands
- * with the other two adapters in Phase 3 — a contribution ships in the phase
- * that implements it.
+ * The active provider (§7), in order:
+ *
+ * 1. with exactly one key stored, that is the provider — no setting, no prompt;
+ * 2. the `promptEnhancer.provider` setting, if it names a provider with a key;
+ * 3. the remembered choice, if it still has a key;
+ * 4. otherwise prompt once and remember.
+ *
+ * A setting naming a provider with no key stored is *ignored rather than
+ * obeyed*: failing with "no key for OpenAI" when an Anthropic key is sitting
+ * right there would be a worse answer than using the key the user has.
  */
-async function resolveProvider(services: Services): Promise<ProviderId | undefined> {
+async function resolveProvider(
+  services: Services,
+  report: Reporter,
+): Promise<ProviderId | undefined> {
   const stored = (await services.secrets.storedProviders()).filter(isImplemented);
 
   const only = stored[0];
   if (only === undefined) {
     // Not an error — the user simply has not set up yet (§7).
-    await reportFailure(new ModelError('no_key'));
+    await report(new ModelError('no_key'));
     return undefined;
   }
   if (stored.length === 1) {
     return only;
+  }
+
+  const configured = vscode.workspace
+    .getConfiguration('promptEnhancer')
+    .get<string>('provider')
+    ?.trim();
+  if (configured !== undefined && isProviderId(configured) && stored.includes(configured)) {
+    return configured;
   }
 
   const remembered = services.choices.getProvider();
@@ -93,12 +116,16 @@ async function resolveProvider(services: Services): Promise<ProviderId | undefin
 
   const picked = await vscode.window.showQuickPick(
     stored.map((provider) => ({ label: PROVIDER_LABELS[provider], provider })),
-    { title: 'Prompt Enhancer: which provider?', placeHolder: 'You have more than one key stored' },
+    {
+      title: 'Prompt Enhancer: which provider?',
+      placeHolder: 'You have more than one key stored',
+    },
   );
   if (picked === undefined) {
     return undefined;
   }
   await services.choices.setProvider(picked.provider);
+  log.info(`active provider set to ${picked.provider}`);
   return picked.provider;
 }
 
@@ -114,7 +141,11 @@ async function resolveProvider(services: Services): Promise<ProviderId | undefin
  * validation is the provider's 404 on the real call — deliberately not a
  * pre-flight check, which would cost a request per enhancement.
  */
-async function resolveModel(services: Services, client: ModelClient): Promise<string | undefined> {
+async function resolveModel(
+  services: Services,
+  client: ModelClient,
+  report: Reporter,
+): Promise<string | undefined> {
   const configured = vscode.workspace
     .getConfiguration('promptEnhancer')
     .get<string>('model')
@@ -128,7 +159,7 @@ async function resolveModel(services: Services, client: ModelClient): Promise<st
     return remembered;
   }
 
-  return pickModel(services, client);
+  return pickModel(services, client, undefined, report);
 }
 
 /**
@@ -141,6 +172,7 @@ async function resolveModel(services: Services, client: ModelClient): Promise<st
 export async function fetchModels(
   client: ModelClient,
   title: string,
+  report: Reporter = reportFailure,
 ): Promise<ModelInfo[] | undefined> {
   try {
     return await vscode.window.withProgress(
@@ -158,7 +190,7 @@ export async function fetchModels(
       },
     );
   } catch (error) {
-    await reportFailure(error, { provider: client.provider });
+    await report(error, { provider: client.provider });
     return undefined;
   }
 }
@@ -174,14 +206,20 @@ export async function pickModel(
   services: Services,
   client: ModelClient,
   models?: ModelInfo[],
+  report: Reporter = reportFailure,
 ): Promise<string | undefined> {
   const available =
-    models ?? (await fetchModels(client, `Prompt Enhancer: loading ${PROVIDER_LABELS[client.provider]} models…`));
+    models ??
+    (await fetchModels(
+      client,
+      `Prompt Enhancer: loading ${PROVIDER_LABELS[client.provider]} models…`,
+      report,
+    ));
   if (available === undefined) {
     return undefined;
   }
   if (available.length === 0) {
-    await reportFailure(
+    await report(
       new ModelError('model_not_found', {
         provider: client.provider,
         detail: 'listModels returned an empty list',

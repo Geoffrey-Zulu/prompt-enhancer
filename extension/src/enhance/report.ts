@@ -12,22 +12,33 @@ import {
 } from '../providers/types.js';
 
 /**
- * The §9 error surface. One `showErrorMessage` with a plain-language cause and,
- * where useful, an action button. Raw HTTP bodies and stack traces go to the
- * output channel and never to the user (§9.7); the channel redacts keys
- * unconditionally (§9.3).
+ * The §9 error surface: a plain-language cause and, where useful, one action.
+ * Raw HTTP bodies and stack traces go to the output channel and never to the
+ * user (§9.7); the channel redacts keys unconditionally (§9.3).
+ *
+ * `describeFailure` is the §9.4 table and the only place it exists. Flow A
+ * renders it as a notification (`reportFailure`) and Flow B renders it into the
+ * chat stream (`chat/streamReporter.ts`) — two renderers, one table, because
+ * two copies of a message table drift and only one of them gets updated.
  *
  * The UI knows `ModelError.kind` and nothing about any provider's error
- * taxonomy — that mapping is each adapter's job (§9.4).
+ * taxonomy; that mapping is each adapter's job.
  */
 
-type Action = 'Set API Key' | 'Select Model' | 'Retry' | 'Open Output';
+export type Action = 'Set API Key' | 'Select Model' | 'Retry' | 'Open Output';
 
-interface Context {
+export interface FailureContext {
   provider?: ProviderId | undefined;
   model?: string | undefined;
   /** Supplied by callers that can safely be run again. */
   retry?: (() => Promise<void>) | undefined;
+}
+
+export interface FailureDescription {
+  message: string;
+  action: Action | undefined;
+  /** `info` for states that are normal rather than broken — see `no_key`. */
+  severity: 'error' | 'info';
 }
 
 function providerName(provider: ProviderId | undefined): string {
@@ -43,9 +54,9 @@ function modelName(model: string | undefined): string {
  * relevant — with three providers in play, "rate limit reached" without saying
  * whose is a support question waiting to happen.
  */
-function describe(
+function describeKind(
   kind: ModelErrorKind,
-  context: Context,
+  context: FailureContext,
 ): { message: string; action: Action | undefined } {
   const provider = providerName(context.provider);
   const model = modelName(context.model);
@@ -90,74 +101,60 @@ function describe(
 }
 
 /**
- * Reports a failure and, if the user picks the action, performs it. Returns
- * without a message for a user cancellation — that is not a failure (§8 A.5).
- *
- * The caller has already guaranteed the document was not modified (§9.1); this
- * function only ever talks to the user.
+ * Classifies any failure into what the user should be told, and logs the
+ * diagnostic half. Returns `undefined` for a user cancellation: that is not a
+ * failure and gets no message at all (§8 Flow A.5).
  */
-export async function reportFailure(error: unknown, context: Context = {}): Promise<void> {
+export function describeFailure(
+  error: unknown,
+  context: FailureContext = {},
+): FailureDescription | undefined {
   if (error instanceof CancelledError) {
-    log.info('enhancement cancelled — document left unchanged');
-    return;
+    log.info('enhancement cancelled — nothing was written');
+    return undefined;
   }
 
   if (error instanceof ModelError) {
-    const merged: Context = {
+    log.error(`model error (${error.kind})`, error.detail ?? error);
+    const merged: FailureContext = {
       provider: error.provider ?? context.provider,
       model: error.model ?? context.model,
-      retry: context.retry,
     };
-    log.error(`model error (${error.kind})`, error.detail ?? error);
-    const { message, action } = describe(error.kind, merged);
-    // The no-key state is normal, not an error (§7) — the user simply has not
-    // set up yet, so it gets an info notification with the same action.
-    await show(message, action, merged, error.kind === 'no_key' ? 'info' : 'error');
-    return;
+    const { message, action } = describeKind(error.kind, merged);
+    return {
+      message,
+      action,
+      // The no-key state is normal, not an error (§7) — the user simply has not
+      // set up yet, so it gets the same action without the alarm.
+      severity: error.kind === 'no_key' ? 'info' : 'error',
+    };
   }
 
   if (error instanceof TimeoutError) {
     log.error(`timed out after ${error.timeoutMs}ms`, error);
-    await show(
-      `${PROVIDER_LABELS[error.provider]} did not respond within ${Math.round(error.timeoutMs / 1000)} seconds.`,
-      'Retry',
-      context,
-    );
-    return;
+    return {
+      message: `${PROVIDER_LABELS[error.provider]} did not respond within ${Math.round(error.timeoutMs / 1000)} seconds.`,
+      action: 'Retry',
+      severity: 'error',
+    };
   }
 
   if (error instanceof PromptInputError) {
     log.error('prompt input rejected', error);
-    await show(`${error.message}.`, undefined, context);
-    return;
+    return { message: `${error.message}.`, action: undefined, severity: 'error' };
   }
 
   log.error('enhancement failed', error);
-  await show('Something went wrong. See the Prompt Enhancer output for details.', 'Open Output', context);
+  return {
+    message: 'Something went wrong. See the Prompt Enhancer output for details.',
+    action: 'Open Output',
+    severity: 'error',
+  };
 }
 
-async function show(
-  message: string,
-  action: Action | undefined,
-  context: Context,
-  severity: 'error' | 'info' = 'error',
-): Promise<void> {
-  const prefixed = `Prompt Enhancer: ${message}`;
-  // Branched rather than picking the function into a variable: TypeScript
-  // cannot call a union of two overloaded signatures.
-  const chosen = await (severity === 'info'
-    ? action === undefined
-      ? vscode.window.showInformationMessage(prefixed)
-      : vscode.window.showInformationMessage(prefixed, action)
-    : action === undefined
-      ? vscode.window.showErrorMessage(prefixed)
-      : vscode.window.showErrorMessage(prefixed, action));
-
-  if (chosen === undefined) {
-    return;
-  }
-
-  switch (chosen) {
+/** Performs the action the user picked. Shared by both renderers. */
+export async function runAction(action: Action, context: FailureContext): Promise<void> {
+  switch (action) {
     case 'Set API Key':
       await vscode.commands.executeCommand('promptEnhancer.setApiKey');
       return;
@@ -172,3 +169,46 @@ async function show(
       return;
   }
 }
+
+/**
+ * Flow A's renderer: one notification with one action button (§9.2).
+ *
+ * The caller has already guaranteed the document was not modified (§9.1); this
+ * function only ever talks to the user.
+ */
+export async function reportFailure(
+  error: unknown,
+  context: FailureContext = {},
+): Promise<void> {
+  const description = describeFailure(error, context);
+  if (description === undefined) {
+    return;
+  }
+
+  const { message, action, severity } = description;
+  const prefixed = `Prompt Enhancer: ${message}`;
+
+  // Branched rather than picking the function into a variable: TypeScript
+  // cannot call a union of two overloaded signatures.
+  const chosen = await (severity === 'info'
+    ? action === undefined
+      ? vscode.window.showInformationMessage(prefixed)
+      : vscode.window.showInformationMessage(prefixed, action)
+    : action === undefined
+      ? vscode.window.showErrorMessage(prefixed)
+      : vscode.window.showErrorMessage(prefixed, action));
+
+  // Compared against `action` rather than cast: the only thing the user can pick
+  // is the one button we offered, and this way the narrowing proves it.
+  if (action !== undefined && chosen === action) {
+    await runAction(action, context);
+  }
+}
+
+/**
+ * Reports a failure. Flow A passes `reportFailure`; Flow B passes a reporter
+ * that writes into the chat stream instead (§8 Flow B.4), so a missing key is
+ * reported where the user is looking rather than as a notification behind the
+ * panel.
+ */
+export type Reporter = (error: unknown, context?: FailureContext) => Promise<void>;

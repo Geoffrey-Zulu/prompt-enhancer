@@ -105,9 +105,21 @@ as a v2 workstream, not as a stub carried in the meantime.
 - **Runtime dependencies:** the three official SDKs — `@anthropic-ai/sdk`, `openai`, and Google's
   Gen AI SDK — and nothing else. Each handles auth headers, streaming SSE parsing, retries, and
   typed errors; hand-rolling that three times against three moving APIs is the larger risk.
-- **Bundle size is a real cost of D2.** Three SDKs is the single biggest thing this design spends.
-  Measure the `.vsix` at the end of Phase 3 and record it; if it becomes a problem the mitigation is
-  lazy `require()` per adapter so only the active provider's SDK is loaded, not dropping providers.
+- **Bundle size is a real cost of D2**, and the measurement is in: **the `.vsix` is 451 KB** from a
+  2.6 MB bundle (Phase 3, all three SDKs, sourcemap excluded from the package). Composition:
+
+  | Part | Bundled |
+  |---|---|
+  | `@google/genai` + its transitive deps (`google-auth-library`, `web-streams-polyfill`, `ws`, `node-fetch`, `gaxios`, …) | ~1 600 KB |
+  | `@anthropic-ai/sdk` | 447 KB |
+  | `openai` | 410 KB |
+  | this extension + the prompts package | 48 KB |
+
+  The Google SDK is ~3.5× the Anthropic one, almost entirely in code this extension never calls:
+  Vertex AI service-account auth and the Live API's WebSocket stack. **No action taken** — 451 KB is
+  unremarkable for a Marketplace extension, and esbuild already wraps each module in a lazy
+  initialiser, so an unused SDK is parsed but never executed. If it ever does matter, the mitigation
+  stays the one named here: lazy `require()` per adapter, not dropping a provider.
 - **Secrets:** VS Code `SecretStorage` only (§7).
 
 The entire extension is client-side. There is no infrastructure to provision, no deploy step, and

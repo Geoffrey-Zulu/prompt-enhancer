@@ -1,7 +1,11 @@
-import { CancelledError, TimeoutError, type ProviderId } from '../providers/types.js';
+import {
+  CancelledError,
+  REQUEST_TIMEOUT_MS,
+  TimeoutError,
+  type ProviderId,
+} from '../providers/types.js';
 
-/** §9.5: 30 s client-side, then abort with a retry action. */
-export const REQUEST_TIMEOUT_MS = 30_000;
+export { REQUEST_TIMEOUT_MS };
 
 /**
  * Runs one provider call under the §9.5 deadline, with the user's cancellation

@@ -4,6 +4,7 @@ import type { RenderedPrompt } from '@prompt-enhancer/prompts';
 import {
   CancelledError,
   ModelError,
+  REQUEST_TIMEOUT_MS,
   TimeoutError,
   type ModelClient,
   type ModelInfo,
@@ -27,9 +28,6 @@ const PROVIDER = 'anthropic' as const;
  */
 const MAX_OUTPUT_TOKENS = 16_000;
 
-/** §9.5. Bounds a single HTTP attempt; the caller's deadline bounds the call. */
-const HTTP_TIMEOUT_MS = 30_000;
-
 /** How many models one `listModels` request returns. Well above the catalogue. */
 const MODEL_PAGE_SIZE = 100;
 
@@ -46,7 +44,7 @@ export class AnthropicClient implements ModelClient {
   constructor(apiKey: string) {
     this.sdk = new Anthropic({
       apiKey,
-      timeout: HTTP_TIMEOUT_MS,
+      timeout: REQUEST_TIMEOUT_MS,
       // The SDK already retries 429 and 5xx with backoff. Wrapping a second
       // retry layer around it is explicitly wrong (§9.4) — an error reaching
       // the caller means retries are exhausted.
@@ -228,7 +226,7 @@ export function toModelError(error: unknown, context: { model?: string }): unkno
     return new ModelError('server', { ...base, detail: error.message, cause: error });
   }
   if (error instanceof Anthropic.APIConnectionTimeoutError) {
-    return new TimeoutError(PROVIDER, HTTP_TIMEOUT_MS);
+    return new TimeoutError(PROVIDER, REQUEST_TIMEOUT_MS);
   }
   if (error instanceof Anthropic.APIConnectionError) {
     return new ModelError('offline', { ...base, detail: error.message, cause: error });

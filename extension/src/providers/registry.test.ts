@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
+import { SecretService } from '../services/SecretService.js';
 import { AnthropicClient } from './anthropic.js';
-import { createClient, detectProvider, isImplemented } from './registry.js';
+import { GoogleClient } from './google.js';
+import { OpenAIClient } from './openai.js';
+import { ALL_PROVIDERS, createClient, detectProvider, isImplemented } from './registry.js';
 
 describe('detectProvider', () => {
   it('resolves an Anthropic key to Anthropic, not OpenAI', () => {
@@ -38,14 +41,46 @@ describe('detectProvider', () => {
 });
 
 describe('createClient', () => {
-  it('only claims the providers that actually have an adapter', () => {
-    // Phase 2 ships one adapter (D2 build order). The unimplemented ones must
-    // fail loudly here rather than being stored and failing at enhance time.
-    expect(isImplemented('anthropic')).toBe(true);
-    expect(isImplemented('openai')).toBe(false);
-    expect(isImplemented('google')).toBe(false);
+  it('routes each supported key shape to its own adapter', () => {
+    // The end-to-end version of the ordering trap: it is not enough for
+    // `detectProvider` to return 'anthropic', the key has to actually arrive at
+    // the Anthropic adapter.
+    const anthropic = createClient(
+      detectProvider('sk-ant-api03-AAAAAAAAAAAAAAAAAAAA') ?? 'openai',
+      'sk-ant-api03-AAAAAAAAAAAAAAAAAAAA',
+    );
+    expect(anthropic).toBeInstanceOf(AnthropicClient);
+    expect(anthropic.provider).toBe('anthropic');
 
-    expect(() => createClient('openai', 'sk-HHHHHHHHHHHHHHHHHHHH')).toThrow(/no adapter/i);
-    expect(() => createClient('google', 'AIzaIIIIIIIIIIIIIIIIIIII')).toThrow(/no adapter/i);
+    const openai = createClient(
+      detectProvider('sk-proj-BBBBBBBBBBBBBBBBBBBB') ?? 'anthropic',
+      'sk-proj-BBBBBBBBBBBBBBBBBBBB',
+    );
+    expect(openai).toBeInstanceOf(OpenAIClient);
+    expect(openai.provider).toBe('openai');
+
+    const google = createClient(
+      detectProvider('AIzaCCCCCCCCCCCCCCCCCCCC') ?? 'anthropic',
+      'AIzaCCCCCCCCCCCCCCCCCCCC',
+    );
+    expect(google).toBeInstanceOf(GoogleClient);
+    expect(google.provider).toBe('google');
+  });
+
+  it('claims all three providers now that all three have an adapter', () => {
+    for (const provider of ALL_PROVIDERS) {
+      expect(isImplemented(provider), provider).toBe(true);
+    }
+  });
+
+  it('gives every provider its own key slot, so keys never collide', () => {
+    // §7: one key per provider, so a user with several keeps them all and
+    // switching provider does not mean re-pasting.
+    const slots = ALL_PROVIDERS.map((provider) => SecretService.storageKey(provider));
+
+    expect(new Set(slots).size).toBe(ALL_PROVIDERS.length);
+    for (const slot of slots) {
+      expect(slot).toMatch(/^promptEnhancer\.apiKey\./);
+    }
   });
 });

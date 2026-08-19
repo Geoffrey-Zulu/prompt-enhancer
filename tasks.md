@@ -3,10 +3,14 @@
 Working task list for the build order in [tdd.md](tdd.md) §11. Read the TDD first; this file
 tracks state, not design. Section references below (§) point at the TDD.
 
-**Current state:** Phase 2 complete on `feature/phase-2-byok`, open as a pull request into `dev`.
-Remote is `github.com/Geoffrey-Zulu/prompt-enhancer`; `dev` holds Phase 1 and is the default branch;
-`main` holds the baseline only, because nothing is production-ready until Phase 5 packages a `.vsix`.
-**Next up:** Phase 3 — the other two providers. **Branch it from `dev`** (see tdd.md §13).
+**Current state:** Phases 3 and 4 complete on `feature/phase-3-providers`, open as a pull request
+into `dev`. Remote is `github.com/Geoffrey-Zulu/prompt-enhancer`; `dev` is the default branch and
+holds Phases 1–2; `main` holds the baseline only, because nothing is production-ready until Phase 5.
+**Next up:** Phase 5 — evals, integration tests, packaging. **Branch it from `dev`** (tdd.md §13).
+
+**One acceptance bar is unmet and cannot be met from a coding session:** Phase 3 requires enhancing
+the same text through all three providers, which needs an OpenAI key and a Google AI key. The check
+is written and runnable — `pnpm --filter prompt-enhancer test:live` — see *Open from Phase 3*.
 
 > **Provider model, rev 4:** the extension supports **Anthropic, OpenAI, and Google AI** (D2), each
 > an adapter behind one `ModelClient` interface (§6). **No model ID is hardcoded** — models are
@@ -214,48 +218,155 @@ as it can be without an extension host, and `@vscode/test-electron` coverage is 
 
 ---
 
-## Phase 3 — The other two providers ⬅ next
+## Phase 3 — The other two providers ✅ complete
 
-- [ ] The remaining two adapters against the same interface. **Refactor `types.ts` if they expose a
+- [x] The remaining two adapters against the same interface. **Refactor `types.ts` if they expose a
       bad assumption** — that is expected, and cheaper than having guessed in Phase 2
-- [ ] Per-provider key storage exercised with two or more keys stored simultaneously
-- [ ] `promptEnhancer.provider` setting for choosing between stored keys; prompt-once-and-remember
+- [x] Per-provider key storage exercised with two or more keys stored simultaneously
+- [x] `promptEnhancer.provider` setting for choosing between stored keys; prompt-once-and-remember
       when it is unset
-- [ ] Model quick-pick working across all three (`listModels` shapes differ per provider)
-- [ ] Redaction test extended to all three key shapes (§7)
-- [ ] Confirm no `switch (provider)` has leaked outside `registry.ts`
-- [ ] **Measure and record the `.vsix` size** (§4). Three bundled SDKs is the biggest thing this
+- [x] Model quick-pick working across all three (`listModels` shapes differ per provider)
+- [x] Redaction test extended to all three key shapes (§7)
+- [x] Confirm no `switch (provider)` has leaked outside `registry.ts`
+- [x] **Measure and record the `.vsix` size** (§4). Three bundled SDKs is the biggest thing this
       design spends. If it's a problem, the fix is lazy `require()` per adapter — not dropping a
       provider
 
 **Acceptance:** the same rough text enhances successfully through all three providers, and switching
-provider needs no re-paste of keys.
+provider needs no re-paste of keys. **Unmet** — see below; it needs an OpenAI and a Google key.
+
+### What the second and third implementations exposed
+
+The interface survived. `ModelClient`, `ModelInfo`, and the `ModelError` kind union all took both new
+adapters unchanged, which is the outcome Phase 2 was gambling on. One thing did move: the 30 s
+`REQUEST_TIMEOUT_MS` was duplicated in the adapter, and three copies of the same number is how they
+drift, so it now lives in `providers/types.ts` and `enhance/deadline.ts` re-exports it.
+
+Three provider differences the adapters absorb rather than leak (§6):
+
+- **Reasoning is shaped differently in all three responses**, and getting it wrong writes the model's
+  reasoning into the user's file. Anthropic: a separate `thinking` block. OpenAI: a `reasoning` output
+  item. **Google: a normal text part carrying `thought: true`** — the nastiest of the three, because a
+  reader that concatenates every `part.text` looks correct and is not.
+- **`@google/genai` has one error class, not a hierarchy.** `ApiError` carries a numeric `status`, so
+  its §9.4 mapping switches on that. Still structured data off a typed error, not a message match.
+  It also answers a *bad key* with `400 INVALID_ARGUMENT` rather than 401, which is the one place any
+  adapter reads error text — documented in `google.ts` with the reasoning.
+- **OpenAI's `listModels` has no capability data**, so it returns embeddings, speech and image models
+  with no way to tell them apart. Both it and Google filter by *excluding* non-text families rather
+  than allow-listing, so a newly released text model appears without a code change (D9's intent).
+
+Two judgement calls worth a second opinion:
+
+- **No `reasoning: {effort}` on OpenAI.** The model list includes non-reasoning models and sending
+  `reasoning` to one is a 400 — so pinning an effort would make the user's model choice decide
+  whether the extension worked. Anthropic keeps `effort: 'low'`; Google keeps its default. The cost
+  is that OpenAI reasoning spend is uncapped, which is why its output budget is 32 000, not 16 000.
+- **`store: false` on OpenAI.** The API default retains the user's selected text in their OpenAI
+  account. §13 promises the text goes to the provider and nowhere else; retention was not part of it.
+
+### Bundle size (§4)
+
+**The `.vsix` is 451 KB**, from a 2.6 MB bundle with the sourcemap excluded via a new
+`extension/.vscodeignore`. `@google/genai` and its transitive deps are ~1 600 KB of that — Vertex AI
+auth and the Live API's WebSocket stack, none of which this extension calls — against 447 KB for
+Anthropic and 410 KB for OpenAI. Full table in tdd.md §4. **No action taken:** 451 KB is unremarkable
+for a Marketplace extension, and esbuild already wraps each module in a lazy initialiser, so an
+unused SDK is parsed but never executed.
+
+Three optional native `require()`s (`bufferutil`, `utf-8-validate`, `supports-color`) survive in the
+bundle from `ws` and `debug`. All three sit inside `try` blocks in their own libraries, so they fail
+harmlessly in a `.vsix` that has no `node_modules`. Verified, not assumed.
+
+### Open from Phase 3 — needs keys, or a live editor
+
+- [ ] **The acceptance criterion itself:** enhance the same rough text through all three providers.
+      This needs an OpenAI key and a Google AI key; only Anthropic has been exercisable. Every rule
+      each adapter must follow is unit-tested against a stubbed `fetch`, which proves what goes on
+      the wire and how the response is read — **not** that the provider returns 200.
+
+      **The check is written.** `extension/src/providers/live.test.ts` runs the real adapters against
+      the real APIs and asserts the criterion. It is skipped unless `PROMPT_ENHANCER_LIVE=1`, so a
+      key sitting in a shell for another reason cannot turn `pnpm test` into a bill:
+
+      ```bash
+      PROMPT_ENHANCER_LIVE=1         ANTHROPIC_API_KEY=sk-ant-...         OPENAI_API_KEY=sk-...         GOOGLE_API_KEY=AIza...         pnpm --filter prompt-enhancer test:live
+      ```
+
+      It names any provider it did not cover and **fails** on a partial run — "two of three work" is
+      not the bar Phase 3 set, and a green suite that quietly skipped a provider is how an unmet bar
+      gets recorded as met. Per provider it checks: `listModels` (which is also key validation),
+      `enhance` on one shared rough note, and `enhanceStream`. It asserts the output carries the
+      input's concrete details verbatim, states at least three of role/task/context/constraints/
+      output-format, and contains no `<thinking>` markup or echoed system prompt.
+- [ ] **Two keys stored at once:** confirm the provider quick-pick appears, that the choice is
+      remembered, and that `promptEnhancer.provider` overrides it.
+- [ ] **Switch provider without re-pasting:** store two keys, switch, enhance with each.
+- [ ] **Model quick-pick per provider:** confirm each list is populated and free of junk — in
+      particular that OpenAI's has no `dall-e` / `whisper` / embedding entries.
 
 ---
 
-## Phase 4 — Chat participant
+## Phase 4 — Chat participant ✅ complete
 
 *(was Phase 3 before rev 4)*
 
-- [ ] Declare `chatParticipants` in `extension/package.json`: `id: "prompt-enhancer.enhance"`,
+- [x] Declare `chatParticipants` in `extension/package.json`: `id: "prompt-enhancer.enhance"`,
       `name: "enhance"`, `fullName`, `description`, `isSticky: true`, plus `/code`, `/architecture`,
       `/refactor` slash commands
-- [ ] `extension/src/chat/` handler registered with
+- [x] `extension/src/chat/` handler registered with
       `vscode.chat.createChatParticipant('prompt-enhancer.enhance', handler)` — id must match the
       contribution exactly
-- [ ] Mode from the slash command, defaulting to `code`
-- [ ] Stream via `enhanceStream`, rendering deltas with `ChatResponseStream.markdown()` as they
+- [x] Mode from the slash command, defaulting to `code`
+- [x] Stream via `enhanceStream`, rendering deltas with `ChatResponseStream.markdown()` as they
       arrive (D8); check the terminal finish reason before treating the result as complete
-- [ ] Name the active provider and model in the response so the user knows which model answered
-- [ ] Honour the handler's `CancellationToken`
-- [ ] Follow-up actions: "Insert into editor", "Copy"
+- [x] Name the active provider and model in the response so the user knows which model answered
+- [x] Honour the handler's `CancellationToken`
+- [x] Follow-up actions: "Insert into editor", "Copy"
 
 **Acceptance:** `@enhance /refactor <rough note>` streams a structured prompt into the chat panel,
-and cancellation stops it mid-stream.
+and cancellation stops it mid-stream. **Unit-tested; unverified in a live chat panel** — see below.
+
+### What shipped, beyond the list above
+
+- **The §9.4 table now has two renderers and still only one copy.** `describeFailure` in
+  `enhance/report.ts` classifies any failure; `reportFailure` renders it as a notification for Flow A
+  and `chat/streamReporter.ts` renders it into the chat stream for Flow B (§8 Flow B.4 — a missing key
+  reported as a toast behind the panel is a message the user may never see). Two copies of a message
+  table drift, and only one of them gets updated.
+- **`resolveSession` takes a `Reporter`**, defaulting to the notification one. That is the whole
+  mechanism by which both flows share key and model resolution without sharing a UI.
+- **Actions are buttons, not follow-ups.** A `ChatFollowup` re-prompts the participant, so it is the
+  wrong tool for "Insert into editor"; `stream.button()` invokes a real command and is the right one.
+  `insertResult` / `copyResult` / `runFailureAction` are registered in code and deliberately **not**
+  contributed to `package.json` — each takes an argument, so a palette entry would be a broken one.
+  The follow-up provider offers something follow-ups are actually for: the same note in the two modes
+  that were not used.
+- **`Retry` is a sentence in chat, not a button.** In Flow A retry re-runs a command the extension
+  still holds; in chat it means re-sending the message, which the extension cannot do for the user. A
+  button that does nothing when clicked is worse than no button.
+- **The §9.5 deadline applies to time-to-first-delta, not to the whole stream.** A 30 s cap on the
+  total would kill a long generation halfway and call it a timeout. What the rule protects against is
+  a request that never answers, and the first delta is the proof that it did.
+- **No buttons on an unfinished result.** The adapters check the terminal finish reason at the *end*
+  of the stream, so a truncated or declined response has already rendered its partial text. It stays
+  on screen — it is a panel, not the user's file — but it is not offered as something to insert.
+- 13 unit tests for the handler, driving it with a fake `ChatResponseStream`.
+
+### Open from Phase 4 — needs a live chat panel
+
+- [ ] `@enhance make the login form validate email` streams into the panel, and the header names the
+      provider and model.
+- [ ] `/refactor`, `/architecture`, `/code` each change the mode; no slash command means `code`.
+- [ ] **Cancellation stops it mid-stream** — the acceptance bar. The unit test covers an
+      already-cancelled token, not a cancel pressed halfway through a real stream.
+- [ ] **Insert into editor** puts the prompt at the cursor; **Copy** reaches the clipboard.
+- [ ] Follow-up chips appear and re-run the note in another mode.
+- [ ] With no key stored, the failure and its **Set API Key** button appear *in the panel*.
 
 ---
 
-## Phase 5 — Evals, tests, packaging
+## Phase 5 — Evals, tests, packaging ⬅ next
 
 *(was Phase 4 before rev 4, and Phase 6 before rev 2)*
 

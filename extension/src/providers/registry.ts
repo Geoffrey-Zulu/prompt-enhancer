@@ -1,4 +1,6 @@
 import { AnthropicClient } from './anthropic.js';
+import { GoogleClient } from './google.js';
+import { OpenAIClient } from './openai.js';
 import { type ModelClient, type ProviderId } from './types.js';
 
 /**
@@ -12,11 +14,12 @@ import { type ModelClient, type ProviderId } from './types.js';
 export const ALL_PROVIDERS: readonly ProviderId[] = ['anthropic', 'openai', 'google'];
 
 /**
- * Providers with a working adapter today. Phase 2 ships one (D2 build order);
- * Phase 3 adds the other two. A key for an unimplemented provider is rejected
- * at key-set time with an honest message rather than stored and left to fail.
+ * Providers with a working adapter. All three as of Phase 3 (D2), so this no
+ * longer excludes anything — it stays because it is what `setApiKey` checks
+ * before storing a key, and a fourth provider will arrive as an adapter before
+ * it arrives as an entry here.
  */
-export const IMPLEMENTED_PROVIDERS: readonly ProviderId[] = ['anthropic'];
+export const IMPLEMENTED_PROVIDERS: readonly ProviderId[] = ['anthropic', 'openai', 'google'];
 
 export function isImplemented(provider: ProviderId): boolean {
   return IMPLEMENTED_PROVIDERS.includes(provider);
@@ -56,10 +59,8 @@ export function createClient(provider: ProviderId, apiKey: string): ModelClient 
     case 'anthropic':
       return new AnthropicClient(apiKey);
     case 'openai':
+      return new OpenAIClient(apiKey);
     case 'google':
-      // Unreachable: `isImplemented` gates key storage, so no key for these
-      // providers can be stored yet. Kept explicit so adding an adapter in
-      // Phase 3 is a compile-time reminder rather than a silent fallthrough.
-      throw new Error(`No adapter for provider "${provider}" yet`);
+      return new GoogleClient(apiKey);
   }
 }

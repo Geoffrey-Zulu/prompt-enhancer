@@ -48,6 +48,29 @@
         "category": "Prompt Enhancer"
       }
     ],
+    "chatParticipants": [
+      {
+        "id": "prompt-enhancer.enhance",
+        "name": "enhance",
+        "fullName": "Prompt Enhancer",
+        "description": "Turn a rough note into a structured prompt",
+        "isSticky": true,
+        "commands": [
+          {
+            "name": "code",
+            "description": "A prompt that yields working code"
+          },
+          {
+            "name": "architecture",
+            "description": "A prompt that yields a design, not an implementation"
+          },
+          {
+            "name": "refactor",
+            "description": "A prompt that yields a behaviour-preserving change"
+          }
+        ]
+      }
+    ],
     "keybindings": [
       {
         "command": "promptEnhancer.enhanceSelection",
@@ -68,6 +91,23 @@
     "configuration": {
       "title": "Prompt Enhancer",
       "properties": {
+        "promptEnhancer.provider": {
+          "type": "string",
+          "enum": [
+            "",
+            "anthropic",
+            "openai",
+            "google"
+          ],
+          "enumDescriptions": [
+            "Ask once and remember (the default).",
+            "Use the stored Anthropic key.",
+            "Use the stored OpenAI key.",
+            "Use the stored Google AI key."
+          ],
+          "default": "",
+          "markdownDescription": "Which provider to use when you have more than one API key stored. Ignored when only one key is stored, and ignored if it names a provider you have no key for — the key you actually have is a better answer than an error. Leave empty to be asked once and have the choice remembered."
+        },
         "promptEnhancer.model": {
           "type": "string",
           "default": "",
@@ -80,19 +120,24 @@
     "deps": "pnpm --filter @prompt-enhancer/prompts build",
     "prebuild": "pnpm run deps",
     "build": "tsup",
+    "package": "vsce package --no-dependencies --allow-missing-repository",
     "watch": "tsup --watch",
     "pretypecheck": "pnpm run deps",
     "typecheck": "tsc --noEmit",
     "vscode:prepublish": "pnpm run build",
-    "test": "vitest run"
+    "test": "vitest run",
+    "test:live": "vitest run src/providers/live.test.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.117.1",
-    "@prompt-enhancer/prompts": "workspace:*"
+    "@google/genai": "^2.17.1",
+    "@prompt-enhancer/prompts": "workspace:*",
+    "openai": "^7.5.0"
   },
   "devDependencies": {
     "@types/node": "^20.16.11",
     "@types/vscode": "^1.90.0",
+    "@vscode/vsce": "^3.9.2",
     "tsup": "^8.3.5",
     "typescript": "^5.6.3",
     "vitest": "^2.1.4"
