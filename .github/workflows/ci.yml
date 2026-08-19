@@ -1,0 +1,102 @@
+name: CI
+
+# §13: typecheck, unit and integration tests on every pull request into dev and
+# main; a .vsix artifact on main, because that is the branch a release comes from.
+#
+# The eval runner (evals/) is deliberately absent. It needs real API keys and
+# spends real tokens, so it is run deliberately by a human — see §10.
+on:
+  pull_request:
+    branches: [dev, main]
+  push:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: Typecheck and unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # No `version:` here on purpose. The action refuses to see the version
+      # given twice, and the root package.json's `packageManager` field is the
+      # place that already pins it for everyone.
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Typecheck
+        run: pnpm -r typecheck
+
+      - name: Unit tests
+        # The live provider suite skips itself: it needs PROMPT_ENHANCER_LIVE=1
+        # plus a key, and neither is set here. Nothing in CI spends tokens.
+        run: pnpm -r test
+
+      - name: Typecheck the integration suite
+        # `pnpm -r typecheck` does not cover extension/integration/ — that code is
+        # emitted rather than checked in place, so its tsconfig is the thing that
+        # checks it.
+        run: pnpm --filter prompt-enhancer run compile:integration
+
+  integration:
+    name: Integration tests (real VS Code)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # No `version:` here on purpose. The action refuses to see the version
+      # given twice, and the root package.json's `packageManager` field is the
+      # place that already pins it for everyone.
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Integration tests
+        # VS Code needs a display; xvfb provides one on a headless runner.
+        run: xvfb-run -a pnpm --filter prompt-enhancer run test:integration
+
+  package:
+    name: Package the .vsix
+    # Only on main: the artifact is a release candidate, and building one from a
+    # pull request would imply the branch is releasable.
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    needs: [check, integration]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # No `version:` here on purpose. The action refuses to see the version
+      # given twice, and the root package.json's `packageManager` field is the
+      # place that already pins it for everyone.
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Build and package
+        run: pnpm --filter prompt-enhancer run package
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: prompt-enhancer-vsix
+          path: extension/*.vsix
+          if-no-files-found: error

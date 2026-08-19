@@ -1,0 +1,26 @@
+{
+  "name": "@prompt-enhancer/evals",
+  "version": "0.0.1",
+  "private": true,
+  "description": "The §10 golden set and runner. Needs a real key and spends real tokens, so it is run deliberately and never in CI.",
+  "license": "UNLICENSED",
+  "type": "module",
+  "scripts": {
+    "deps": "pnpm --filter @prompt-enhancer/prompts build",
+    "preeval": "pnpm run deps",
+    "eval": "tsx src/run.ts",
+    "pretypecheck": "pnpm run deps",
+    "typecheck": "tsc --noEmit",
+    "pretest": "pnpm run deps",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@prompt-enhancer/prompts": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^20.16.11",
+    "tsx": "^4.19.2",
+    "typescript": "^5.6.3",
+    "vitest": "^2.1.4"
+  }
+}

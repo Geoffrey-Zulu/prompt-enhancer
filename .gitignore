@@ -14,3 +14,16 @@ coverage/
 .turbo/
 *.tsbuildinfo
 packages/prompts/src/generated/
+
+# Recorded eval runs — regenerate with `eval --record`; they hold model output,
+# not source, and go stale the moment the template changes.
+evals/recordings/
+
+# Integration test output (tsc emits real JS here for mocha to run).
+extension/out/
+
+# Downloaded VS Code for the integration suite.
+extension/.vscode-test/
+
+# vsce output.
+*.vsix

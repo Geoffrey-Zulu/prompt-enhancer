@@ -7,13 +7,17 @@
   "type": "commonjs",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
-  "files": ["dist", "templates"],
+  "files": [
+    "dist",
+    "templates"
+  ],
   "scripts": {
     "generate": "node scripts/generate.mjs",
     "pretypecheck": "pnpm run generate",
     "typecheck": "tsc --noEmit",
     "prebuild": "pnpm run generate",
     "build": "tsc -p tsconfig.json",
+    "pretest": "pnpm run generate",
     "test": "vitest run"
   },
   "devDependencies": {
