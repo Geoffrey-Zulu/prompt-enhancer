@@ -1,0 +1,12 @@
+{
+  "extends": "../tsconfig.base.json",
+  "compilerOptions": {
+    // tsup does the emitting; tsc is only ever run with --noEmit here, so
+    // rootDir/outDir would serve no purpose and would exclude tsup.config.ts.
+    "noEmit": true,
+    "types": ["node", "vscode"],
+    "declaration": false,
+    "declarationMap": false
+  },
+  "include": ["src/**/*.ts", "tsup.config.ts"]
+}

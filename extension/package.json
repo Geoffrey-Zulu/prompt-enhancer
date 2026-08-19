@@ -1,0 +1,61 @@
+{
+  "name": "prompt-enhancer",
+  "displayName": "Prompt Enhancer",
+  "description": "Turn rough notes into structured, context-rich prompts — in the editor or in chat.",
+  "version": "0.0.1",
+  "private": true,
+  "license": "UNLICENSED",
+  "publisher": "TBD",
+  "engines": {
+    "vscode": "^1.90.0",
+    "node": ">=20"
+  },
+  "categories": ["Other", "AI", "Chat"],
+  "keywords": ["prompt", "prompt engineering", "ai", "gemini", "chat"],
+  "main": "./dist/extension.js",
+  "activationEvents": [],
+  "contributes": {
+    "commands": [
+      {
+        "command": "promptEnhancer.enhanceSelection",
+        "title": "Enhance Selection",
+        "category": "Prompt Enhancer"
+      }
+    ],
+    "keybindings": [
+      {
+        "command": "promptEnhancer.enhanceSelection",
+        "key": "ctrl+alt+e",
+        "mac": "cmd+alt+e",
+        "when": "editorTextFocus && editorHasSelection"
+      }
+    ],
+    "menus": {
+      "editor/context": [
+        {
+          "command": "promptEnhancer.enhanceSelection",
+          "when": "editorHasSelection",
+          "group": "1_modification@100"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "deps": "pnpm --filter @prompt-enhancer/prompts build",
+    "prebuild": "pnpm run deps",
+    "build": "tsup",
+    "watch": "tsup --watch",
+    "pretypecheck": "pnpm run deps",
+    "typecheck": "tsc --noEmit",
+    "vscode:prepublish": "pnpm run build"
+  },
+  "dependencies": {
+    "@prompt-enhancer/prompts": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^20.16.11",
+    "@types/vscode": "^1.90.0",
+    "tsup": "^8.3.5",
+    "typescript": "^5.6.3"
+  }
+}

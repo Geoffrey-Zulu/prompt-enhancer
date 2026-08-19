@@ -1,0 +1,16 @@
+node_modules/
+dist/
+out/
+*.vsix
+.env
+.env.*
+*.log
+.DS_Store
+Thumbs.db
+.firebase/
+firebase-debug.log
+.genkit/
+coverage/
+.turbo/
+*.tsbuildinfo
+packages/prompts/src/generated/

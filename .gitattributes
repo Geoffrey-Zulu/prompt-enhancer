@@ -1,0 +1,5 @@
+# Normalise line endings so the template sha256 is stable across platforms.
+* text=auto eol=lf
+
+*.png binary
+*.vsix binary

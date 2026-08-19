@@ -1,0 +1,23 @@
+{
+  "name": "@prompt-enhancer/prompts",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Single source of truth for the Prompt Enhancer enhancement prompt",
+  "license": "UNLICENSED",
+  "type": "commonjs",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": ["dist", "templates"],
+  "scripts": {
+    "generate": "node scripts/generate.mjs",
+    "pretypecheck": "pnpm run generate",
+    "typecheck": "tsc --noEmit",
+    "prebuild": "pnpm run generate",
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.3",
+    "vitest": "^2.1.4"
+  }
+}

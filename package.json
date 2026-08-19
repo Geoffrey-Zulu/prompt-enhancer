@@ -1,0 +1,19 @@
+{
+  "name": "prompt-enhancer-workspace",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Prompt Enhancer VS Code extension — workspace root",
+  "license": "UNLICENSED",
+  "engines": {
+    "node": ">=20"
+  },
+  "packageManager": "pnpm@9.12.0",
+  "scripts": {
+    "build": "pnpm -r build",
+    "typecheck": "pnpm -r typecheck",
+    "clean": "pnpm -r exec rm -rf dist out *.tsbuildinfo"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.3"
+  }
+}

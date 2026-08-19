@@ -1,0 +1,22 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "type": "npm",
+      "script": "build",
+      "path": "extension",
+      "group": "build",
+      "problemMatcher": "$tsc",
+      "label": "npm: build - extension",
+      "detail": "Build the prompts package, then bundle the extension."
+    },
+    {
+      "type": "npm",
+      "script": "watch",
+      "path": "extension",
+      "isBackground": true,
+      "problemMatcher": "$tsc-watch",
+      "label": "npm: watch - extension"
+    }
+  ]
+}
