@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 
+import { describeFailure, reportFailure, type Reporter } from '../enhance/report.js';
 import { fetchModels, pickModel } from '../enhance/session.js';
 import { log } from '../log.js';
 import {
@@ -9,7 +10,7 @@ import {
   isImplemented,
   looksLikeAnApiKey,
 } from '../providers/registry.js';
-import { PROVIDER_LABELS, type ProviderId } from '../providers/types.js';
+import { ModelError, PROVIDER_LABELS, type ModelInfo, type ProviderId } from '../providers/types.js';
 import type { Services } from '../services/index.js';
 
 /**
@@ -28,7 +29,7 @@ export async function setApiKey(services: Services): Promise<void> {
   const entered = await vscode.window.showInputBox({
     title: 'Prompt Enhancer: Set API Key',
     prompt:
-      'Paste an Anthropic, OpenAI, or Google AI API key. The provider follows from the key itself. It is held in the OS credential store via VS Code SecretStorage, and is sent only to the provider it belongs to.',
+      'Paste an Anthropic, OpenAI, or Google AI API key. The provider is worked out from the key, and you are asked if it cannot be. The key is held in the OS credential store via VS Code SecretStorage, and is sent only to the provider it belongs to.',
     placeHolder: 'sk-ant-… · sk-… · AQ.… · AIza…',
     password: true,
     ignoreFocusOut: true,
@@ -56,33 +57,48 @@ export async function setApiKey(services: Services): Promise<void> {
   // we know, ask — because the alternative is refusing a key that works, which
   // is precisely what happened when Google replaced its key format and this
   // extension only recognised the retired one.
-  const provider = detectProvider(apiKey) ?? (await askWhichProvider());
+  const detected = detectProvider(apiKey);
+  let provider = detected ?? (await askWhichProvider());
   if (provider === undefined) {
     return;
   }
 
-  if (!isImplemented(provider)) {
-    log.warn(`rejected a ${provider} key — no adapter yet, nothing stored`);
-    void vscode.window.showErrorMessage(
-      `Prompt Enhancer: ${PROVIDER_LABELS[provider]} keys are not supported yet — support arrives with the other adapters. Nothing was stored.`,
+  let attempt = await validate(provider, apiKey);
+
+  // **A guess that fails is worth one question, not a dead end.** Recognising a
+  // prefix says nothing about being right: if a provider ever ships a format that
+  // collides with another's, detection routes the key to the wrong adapter and the
+  // user sees a flat "your key was rejected" for a key that is perfectly good.
+  // Since the guess is already being checked against the provider, letting a
+  // rejection re-open the question makes a mis-guess self-correcting — and costs
+  // nothing on the path where the guess was right.
+  if (attempt.models === undefined && detected !== undefined && isRoutingFailure(attempt.error)) {
+    log.warn(`${detected} rejected the key; the prefix may have routed it wrongly`);
+    const corrected = await askWhichProvider(
+      `${PROVIDER_LABELS[detected]} rejected that key — is it for a different provider?`,
     );
+    if (corrected === undefined) {
+      await reportFailure(attempt.error, { provider });
+      return;
+    }
+    if (corrected !== provider) {
+      provider = corrected;
+      attempt = await validate(provider, apiKey);
+    }
+  }
+
+  const models = attempt.models;
+  if (models === undefined) {
+    log.warn(`${provider} key was not accepted — nothing stored`);
+    await reportFailure(attempt.error, { provider });
     return;
   }
 
   const label = PROVIDER_LABELS[provider];
-  const client = createClient(provider, apiKey);
-
-  // Validate on set (§7). `fetchModels` has already reported any failure.
-  const models = await fetchModels(client, `Prompt Enhancer: checking your ${label} key…`);
-  if (models === undefined) {
-    log.warn(`${provider} key was not accepted — nothing stored`);
-    return;
-  }
-
   await services.secrets.setKey(provider, apiKey);
   log.info(`stored a ${provider} key; ${models.length} model(s) available`);
 
-  const model = await pickModel(services, client, models);
+  const model = await pickModel(services, createClient(provider, apiKey), models);
   if (model === undefined) {
     void vscode.window.showInformationMessage(
       `Prompt Enhancer: ${label} key saved. You'll be asked to choose a model on first use.`,
@@ -102,8 +118,8 @@ export async function setApiKey(services: Services): Promise<void> {
  * "this is wrong" otherwise — and the whole point of this path is that the key is
  * probably fine and our table of prefixes is probably stale.
  */
-async function askWhichProvider(): Promise<ProviderId | undefined> {
-  log.info('key prefix not recognised — asking which provider it belongs to');
+async function askWhichProvider(placeHolder?: string): Promise<ProviderId | undefined> {
+  log.info('asking which provider the key belongs to');
 
   const picked = await vscode.window.showQuickPick(
     IMPLEMENTED_PROVIDERS.map((provider) => ({
@@ -112,10 +128,64 @@ async function askWhichProvider(): Promise<ProviderId | undefined> {
     })),
     {
       title: 'Prompt Enhancer: which provider is this key for?',
-      placeHolder: 'The key format is unfamiliar — it will still be checked before it is stored',
+      placeHolder:
+        placeHolder ??
+        'The key format is unfamiliar — it will still be checked before it is stored',
       ignoreFocusOut: true,
     },
   );
 
   return picked?.provider;
+}
+
+interface ValidationAttempt {
+  models: ModelInfo[] | undefined;
+  error: unknown;
+}
+
+/**
+ * One `listModels()` call: confirms the key works *and* populates the model
+ * quick-pick (§7). Nothing is stored until this succeeds.
+ *
+ * Failures are captured rather than shown, because this may be called twice — a
+ * rejected guess re-opens the provider question — and reporting each attempt
+ * would put two error toasts in front of the user for one key.
+ */
+async function validate(provider: ProviderId, apiKey: string): Promise<ValidationAttempt> {
+  if (!isImplemented(provider)) {
+    return {
+      models: undefined,
+      error: new ModelError('bad_request', {
+        provider,
+        detail: 'no adapter for this provider yet',
+      }),
+    };
+  }
+
+  let captured: unknown;
+  const capture: Reporter = (error) => {
+    captured = error;
+    // Still logged, with the key-redacting channel doing its job (§9.3).
+    describeFailure(error, { provider });
+    return Promise.resolve();
+  };
+
+  const models = await fetchModels(
+    createClient(provider, apiKey),
+    `Prompt Enhancer: checking your ${PROVIDER_LABELS[provider]} key…`,
+    capture,
+  );
+
+  return { models, error: captured };
+}
+
+/**
+ * Whether a failure could plausibly mean "this key belongs to someone else"
+ * rather than "this key is broken".
+ *
+ * Only auth and permission failures qualify. Being offline or rate limited says
+ * nothing about which provider a key is for, and asking would be noise.
+ */
+function isRoutingFailure(error: unknown): boolean {
+  return error instanceof ModelError && (error.kind === 'auth' || error.kind === 'forbidden');
 }
