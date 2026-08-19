@@ -5,7 +5,7 @@
   "version": "0.1.0",
   "private": true,
   "license": "MIT",
-  "publisher": "REPLACE-WITH-YOUR-PUBLISHER-ID",
+  "publisher": "geoffreyzulu",
   "engines": {
     "vscode": "^1.90.0",
     "node": ">=20"
