@@ -238,6 +238,19 @@ export class PromptEnhancerViewProvider implements vscode.WebviewViewProvider {
       ),
     ).join('');
 
+    return renderPanelHtml(webview.cspSource, nonce);
+  }
+}
+
+/**
+ * The panel's markup, as a pure function of its two inputs.
+ *
+ * Split out so it can be rendered and inspected without a `Webview`, because the
+ * script below is a string as far as TypeScript is concerned: **tsc does not
+ * check it and the unit suite would never load it.** A syntax error in there
+ * ships as a panel that renders and does nothing. `panel.test.ts` parses it.
+ */
+export function renderPanelHtml(cspSource: string, nonce: string): string {
     const modeOptions = ENHANCE_MODES.map(
       (mode) =>
         `<option value="${mode}"${mode === DEFAULT_MODE ? ' selected' : ''}>${mode}</option>`,
@@ -248,7 +261,7 @@ export class PromptEnhancerViewProvider implements vscode.WebviewViewProvider {
 <head>
 <meta charset="UTF-8">
 <meta http-equiv="Content-Security-Policy"
-      content="default-src 'none'; style-src ${webview.cspSource} 'unsafe-inline'; script-src 'nonce-${nonce}';">
+      content="default-src 'none'; style-src ${cspSource} 'unsafe-inline'; script-src 'nonce-${nonce}';">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <style>
   body {
@@ -303,16 +316,47 @@ export class PromptEnhancerViewProvider implements vscode.WebviewViewProvider {
   #status { min-height: 18px; margin-top: 8px; font-size: 0.9em; opacity: 0.85; }
   #status.error { color: var(--vscode-errorForeground); opacity: 1; }
   #statusAction { margin-left: 8px; padding: 2px 8px; font-size: 0.9em; }
+  /* Collapsed once a key is set: it is setup, and setup that is done is noise.
+     Left open, and highlighted, while there is no key - which is the one time it
+     is the most important thing on the screen. */
   #setup {
     margin: 0 0 12px;
-    padding: 8px 10px;
-    border: 1px solid var(--vscode-panel-border, rgba(128,128,128,0.35));
+    padding: 5px 8px;
+    border: 1px solid transparent;
     border-radius: 3px;
+  }
+  #setup[open] {
+    padding: 8px 10px;
+    border-color: var(--vscode-panel-border, rgba(128,128,128,0.35));
     background: var(--vscode-editorWidget-background, transparent);
   }
-  #setup.needsKey { border-color: var(--vscode-inputValidation-warningBorder, #cca700); }
-  #setupSummary { font-size: 0.9em; opacity: 0.85; }
-  #setupSummary strong { opacity: 1; }
+  #setup.needsKey[open] { border-color: var(--vscode-inputValidation-warningBorder, #cca700); }
+  #setupSummary {
+    font-size: 0.9em;
+    opacity: 0.75;
+    cursor: pointer;
+    list-style: none;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    user-select: none;
+  }
+  #setupSummary:hover { opacity: 1; }
+  #setupSummary::-webkit-details-marker { display: none; }
+  /* A chevron of our own, so it points the right way in both states without
+     depending on the platform's default marker. */
+  #setupSummary::before {
+    content: '';
+    width: 0;
+    height: 0;
+    border-left: 4px solid currentColor;
+    border-top: 4px solid transparent;
+    border-bottom: 4px solid transparent;
+    transition: transform 0.1s ease;
+    flex: none;
+  }
+  #setup[open] #setupSummary::before { transform: rotate(90deg); }
+  #setup.needsKey #setupSummary { opacity: 1; }
   #setup .row { margin-top: 8px; }
   #setup button { padding: 3px 10px; font-size: 0.9em; }
   .hint { opacity: 0.7; font-size: 0.9em; margin-top: 10px; line-height: 1.45; }
@@ -320,14 +364,14 @@ export class PromptEnhancerViewProvider implements vscode.WebviewViewProvider {
 </style>
 </head>
 <body>
-  <div id="setup">
-    <div id="setupSummary">Checking your setup…</div>
+  <details id="setup">
+    <summary id="setupSummary">Checking your setup…</summary>
     <div class="row">
       <button id="setKey" class="secondary">Set API key</button>
       <button id="changeModel" class="secondary">Change model</button>
       <button id="clearKey" class="secondary">Clear key</button>
     </div>
-  </div>
+  </details>
 
   <label for="rough">Rough prompt</label>
   <textarea id="rough" placeholder="fix the landing page, make it so good"></textarea>
@@ -354,6 +398,12 @@ export class PromptEnhancerViewProvider implements vscode.WebviewViewProvider {
 
 <script nonce="${nonce}">
   const vscode = acquireVsCodeApi();
+
+  // Whether a key is stored gates Enhance independently of whether a request is
+  // running, so the two must not fight over the same disabled flag.
+  let hasKey = false;
+
+  const setup = document.getElementById('setup');
   const rough = document.getElementById('rough');
   const result = document.getElementById('result');
   const mode = document.getElementById('mode');
@@ -366,14 +416,30 @@ export class PromptEnhancerViewProvider implements vscode.WebviewViewProvider {
   rough.value = saved.rough || '';
   result.value = saved.result || '';
   if (saved.mode) { mode.value = saved.mode; }
-  const save = () => vscode.setState({ rough: rough.value, result: result.value, mode: mode.value });
+  // Whether the user wants the setup strip open, as distinct from whether it
+  // happens to be open right now: with no key it is forced open regardless.
+  let setupOpenPreference = saved.setupOpen === true;
+  const save = () => vscode.setState({
+    rough: rough.value,
+    result: result.value,
+    mode: mode.value,
+    setupOpen: setupOpenPreference,
+  });
   rough.addEventListener('input', save);
   result.addEventListener('input', save);
   mode.addEventListener('change', save);
+  setup.addEventListener('toggle', () => {
+    // Only a toggle made while a key exists is a real preference. Forcing the
+    // strip open because there is no key also fires this event, and recording
+    // that would leave it open forever once a key was finally added.
+    if (hasKey) {
+      setupOpenPreference = setup.open;
+    }
+    save();
+  });
 
   const statusText = document.getElementById('statusText');
   const statusAction = document.getElementById('statusAction');
-  const setup = document.getElementById('setup');
   const setupSummary = document.getElementById('setupSummary');
   const changeModel = document.getElementById('changeModel');
   const clearKey = document.getElementById('clearKey');
@@ -409,9 +475,6 @@ export class PromptEnhancerViewProvider implements vscode.WebviewViewProvider {
     vscode.postMessage({ type: 'selectModel' }));
   clearKey.addEventListener('click', () =>
     vscode.postMessage({ type: 'clearApiKey' }));
-  // Whether a key is stored gates Enhance independently of whether a request is
-  // running, so the two must not fight over the same disabled flag.
-  let hasKey = false;
   const setRunning = (running) => {
     enhance.disabled = running || !hasKey;
     cancel.classList.toggle('hidden', !running);
@@ -451,15 +514,22 @@ export class PromptEnhancerViewProvider implements vscode.WebviewViewProvider {
         changeModel.disabled = noKey;
         clearKey.disabled = noKey;
         setRunning(false);
+
         if (noKey) {
           setupSummary.textContent =
             'No API key yet. Add one from Anthropic, OpenAI or Google AI to get started.';
+          // Forced open: with no key this is the only thing worth doing here, and
+          // collapsing it would hide the one control that unblocks the panel.
+          setup.open = true;
         } else {
           const where = message.providers.join(', ');
-          setupSummary.innerHTML = 'Using <strong></strong>';
-          setupSummary.querySelector('strong').textContent =
+          setupSummary.textContent =
             where + (message.model ? ' · ' + message.model : ' · model not chosen yet');
+          // Setup that is done is noise, so it collapses - unless the user opened
+          // it themselves, in which case leave their choice alone.
+          setup.open = setupOpenPreference;
         }
+        save();
         break;
       }
       case 'prefill':
@@ -495,5 +565,4 @@ export class PromptEnhancerViewProvider implements vscode.WebviewViewProvider {
 </script>
 </body>
 </html>`;
-  }
 }
