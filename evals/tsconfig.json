@@ -1,0 +1,16 @@
+{
+  "extends": "../tsconfig.base.json",
+  "compilerOptions": {
+    // Same reasoning as the extension: the runner imports the extension's
+    // provider adapters, one of whose SDKs (@google/genai) ships no CommonJS
+    // type declarations. tsx runs the TypeScript directly, so a bundler-style
+    // resolution is what actually applies.
+    "noEmit": true,
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "types": ["node"],
+    "declaration": false,
+    "declarationMap": false
+  },
+  "include": ["src/**/*.ts"]
+}

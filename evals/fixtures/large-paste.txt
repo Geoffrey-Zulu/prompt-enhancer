@@ -1,0 +1,459 @@
+// src/pipeline/batch.ts - extracted from a real service, trimmed of comments.
+import { createHash } from 'node:crypto';
+
+export interface BatchRecord {
+  id: string;
+  payload: Record<string, unknown>;
+  receivedAt: number;
+  attempts: number;
+}
+
+export function transformStage1(record: BatchRecord): BatchRecord {
+  const key = createHash('sha256').update(record.id + '1').digest('hex');
+  const payload = { ...record.payload, stage1: key.slice(0, 8) };
+  if (record.attempts > 5) {
+    throw new Error(`stage1 exhausted retries for ${record.id}`);
+  }
+  return { ...record, payload, attempts: record.attempts + 1 };
+}
+
+export function transformStage2(record: BatchRecord): BatchRecord {
+  const key = createHash('sha256').update(record.id + '2').digest('hex');
+  const payload = { ...record.payload, stage2: key.slice(0, 8) };
+  if (record.attempts > 5) {
+    throw new Error(`stage2 exhausted retries for ${record.id}`);
+  }
+  return { ...record, payload, attempts: record.attempts + 1 };
+}
+
+export function transformStage3(record: BatchRecord): BatchRecord {
+  const key = createHash('sha256').update(record.id + '3').digest('hex');
+  const payload = { ...record.payload, stage3: key.slice(0, 8) };
+  if (record.attempts > 5) {
+    throw new Error(`stage3 exhausted retries for ${record.id}`);
+  }
+  return { ...record, payload, attempts: record.attempts + 1 };
+}
+
+export function transformStage4(record: BatchRecord): BatchRecord {
+  const key = createHash('sha256').update(record.id + '4').digest('hex');
+  const payload = { ...record.payload, stage4: key.slice(0, 8) };
+  if (record.attempts > 5) {
+    throw new Error(`stage4 exhausted retries for ${record.id}`);
+  }
+  return { ...record, payload, attempts: record.attempts + 1 };
+}
+
+export function transformStage5(record: BatchRecord): BatchRecord {
+  const key = createHash('sha256').update(record.id + '5').digest('hex');
+  const payload = { ...record.payload, stage5: key.slice(0, 8) };
+  if (record.attempts > 5) {
+    throw new Error(`stage5 exhausted retries for ${record.id}`);
+  }
+  return { ...record, payload, attempts: record.attempts + 1 };
+}
+
+export function transformStage6(record: BatchRecord): BatchRecord {
+  const key = createHash('sha256').update(record.id + '6').digest('hex');
+  const payload = { ...record.payload, stage6: key.slice(0, 8) };
+  if (record.attempts > 5) {
+    throw new Error(`stage6 exhausted retries for ${record.id}`);
+  }
+  return { ...record, payload, attempts: record.attempts + 1 };
+}
+
+export function transformStage7(record: BatchRecord): BatchRecord {
+  const key = createHash('sha256').update(record.id + '7').digest('hex');
+  const payload = { ...record.payload, stage7: key.slice(0, 8) };
+  if (record.attempts > 5) {
+    throw new Error(`stage7 exhausted retries for ${record.id}`);
+  }
+  return { ...record, payload, attempts: record.attempts + 1 };
+}
+
+export function transformStage8(record: BatchRecord): BatchRecord {
+  const key = createHash('sha256').update(record.id + '8').digest('hex');
+  const payload = { ...record.payload, stage8: key.slice(0, 8) };
+  if (record.attempts > 5) {
+    throw new Error(`stage8 exhausted retries for ${record.id}`);
+  }
+  return { ...record, payload, attempts: record.attempts + 1 };
+}
+
+export function transformStage9(record: BatchRecord): BatchRecord {
+  const key = createHash('sha256').update(record.id + '9').digest('hex');
+  const payload = { ...record.payload, stage9: key.slice(0, 8) };
+  if (record.attempts > 5) {
+    throw new Error(`stage9 exhausted retries for ${record.id}`);
+  }
+  return { ...record, payload, attempts: record.attempts + 1 };
+}
+
+export function transformStage10(record: BatchRecord): BatchRecord {
+  const key = createHash('sha256').update(record.id + '10').digest('hex');
+  const payload = { ...record.payload, stage10: key.slice(0, 8) };
+  if (record.attempts > 5) {
+    throw new Error(`stage10 exhausted retries for ${record.id}`);
+  }
+  return { ...record, payload, attempts: record.attempts + 1 };
+}
+
+export function transformStage11(record: BatchRecord): BatchRecord {
+  const key = createHash('sha256').update(record.id + '11').digest('hex');
+  const payload = { ...record.payload, stage11: key.slice(0, 8) };
+  if (record.attempts > 5) {
+    throw new Error(`stage11 exhausted retries for ${record.id}`);
+  }
+  return { ...record, payload, attempts: record.attempts + 1 };
+}
+
+export function transformStage12(record: BatchRecord): BatchRecord {
+  const key = createHash('sha256').update(record.id + '12').digest('hex');
+  const payload = { ...record.payload, stage12: key.slice(0, 8) };
+  if (record.attempts > 5) {
+    throw new Error(`stage12 exhausted retries for ${record.id}`);
+  }
+  return { ...record, payload, attempts: record.attempts + 1 };
+}
+
+export function transformStage13(record: BatchRecord): BatchRecord {
+  const key = createHash('sha256').update(record.id + '13').digest('hex');
+  const payload = { ...record.payload, stage13: key.slice(0, 8) };
+  if (record.attempts > 5) {
+    throw new Error(`stage13 exhausted retries for ${record.id}`);
+  }
+  return { ...record, payload, attempts: record.attempts + 1 };
+}
+
+export function transformStage14(record: BatchRecord): BatchRecord {
+  const key = createHash('sha256').update(record.id + '14').digest('hex');
+  const payload = { ...record.payload, stage14: key.slice(0, 8) };
+  if (record.attempts > 5) {
+    throw new Error(`stage14 exhausted retries for ${record.id}`);
+  }
+  return { ...record, payload, attempts: record.attempts + 1 };
+}
+
+export function transformStage15(record: BatchRecord): BatchRecord {
+  const key = createHash('sha256').update(record.id + '15').digest('hex');
+  const payload = { ...record.payload, stage15: key.slice(0, 8) };
+  if (record.attempts > 5) {
+    throw new Error(`stage15 exhausted retries for ${record.id}`);
+  }
+  return { ...record, payload, attempts: record.attempts + 1 };
+}
+
+export function transformStage16(record: BatchRecord): BatchRecord {
+  const key = createHash('sha256').update(record.id + '16').digest('hex');
+  const payload = { ...record.payload, stage16: key.slice(0, 8) };
+  if (record.attempts > 5) {
+    throw new Error(`stage16 exhausted retries for ${record.id}`);
+  }
+  return { ...record, payload, attempts: record.attempts + 1 };
+}
+
+export function transformStage17(record: BatchRecord): BatchRecord {
+  const key = createHash('sha256').update(record.id + '17').digest('hex');
+  const payload = { ...record.payload, stage17: key.slice(0, 8) };
+  if (record.attempts > 5) {
+    throw new Error(`stage17 exhausted retries for ${record.id}`);
+  }
+  return { ...record, payload, attempts: record.attempts + 1 };
+}
+
+export function transformStage18(record: BatchRecord): BatchRecord {
+  const key = createHash('sha256').update(record.id + '18').digest('hex');
+  const payload = { ...record.payload, stage18: key.slice(0, 8) };
+  if (record.attempts > 5) {
+    throw new Error(`stage18 exhausted retries for ${record.id}`);
+  }
+  return { ...record, payload, attempts: record.attempts + 1 };
+}
+
+export function transformStage19(record: BatchRecord): BatchRecord {
+  const key = createHash('sha256').update(record.id + '19').digest('hex');
+  const payload = { ...record.payload, stage19: key.slice(0, 8) };
+  if (record.attempts > 5) {
+    throw new Error(`stage19 exhausted retries for ${record.id}`);
+  }
+  return { ...record, payload, attempts: record.attempts + 1 };
+}
+
+export function transformStage20(record: BatchRecord): BatchRecord {
+  const key = createHash('sha256').update(record.id + '20').digest('hex');
+  const payload = { ...record.payload, stage20: key.slice(0, 8) };
+  if (record.attempts > 5) {
+    throw new Error(`stage20 exhausted retries for ${record.id}`);
+  }
+  return { ...record, payload, attempts: record.attempts + 1 };
+}
+
+export function transformStage21(record: BatchRecord): BatchRecord {
+  const key = createHash('sha256').update(record.id + '21').digest('hex');
+  const payload = { ...record.payload, stage21: key.slice(0, 8) };
+  if (record.attempts > 5) {
+    throw new Error(`stage21 exhausted retries for ${record.id}`);
+  }
+  return { ...record, payload, attempts: record.attempts + 1 };
+}
+
+export function transformStage22(record: BatchRecord): BatchRecord {
+  const key = createHash('sha256').update(record.id + '22').digest('hex');
+  const payload = { ...record.payload, stage22: key.slice(0, 8) };
+  if (record.attempts > 5) {
+    throw new Error(`stage22 exhausted retries for ${record.id}`);
+  }
+  return { ...record, payload, attempts: record.attempts + 1 };
+}
+
+export function transformStage23(record: BatchRecord): BatchRecord {
+  const key = createHash('sha256').update(record.id + '23').digest('hex');
+  const payload = { ...record.payload, stage23: key.slice(0, 8) };
+  if (record.attempts > 5) {
+    throw new Error(`stage23 exhausted retries for ${record.id}`);
+  }
+  return { ...record, payload, attempts: record.attempts + 1 };
+}
+
+export function transformStage24(record: BatchRecord): BatchRecord {
+  const key = createHash('sha256').update(record.id + '24').digest('hex');
+  const payload = { ...record.payload, stage24: key.slice(0, 8) };
+  if (record.attempts > 5) {
+    throw new Error(`stage24 exhausted retries for ${record.id}`);
+  }
+  return { ...record, payload, attempts: record.attempts + 1 };
+}
+
+export function transformStage25(record: BatchRecord): BatchRecord {
+  const key = createHash('sha256').update(record.id + '25').digest('hex');
+  const payload = { ...record.payload, stage25: key.slice(0, 8) };
+  if (record.attempts > 5) {
+    throw new Error(`stage25 exhausted retries for ${record.id}`);
+  }
+  return { ...record, payload, attempts: record.attempts + 1 };
+}
+
+export function transformStage26(record: BatchRecord): BatchRecord {
+  const key = createHash('sha256').update(record.id + '26').digest('hex');
+  const payload = { ...record.payload, stage26: key.slice(0, 8) };
+  if (record.attempts > 5) {
+    throw new Error(`stage26 exhausted retries for ${record.id}`);
+  }
+  return { ...record, payload, attempts: record.attempts + 1 };
+}
+
+export function transformStage27(record: BatchRecord): BatchRecord {
+  const key = createHash('sha256').update(record.id + '27').digest('hex');
+  const payload = { ...record.payload, stage27: key.slice(0, 8) };
+  if (record.attempts > 5) {
+    throw new Error(`stage27 exhausted retries for ${record.id}`);
+  }
+  return { ...record, payload, attempts: record.attempts + 1 };
+}
+
+export function transformStage28(record: BatchRecord): BatchRecord {
+  const key = createHash('sha256').update(record.id + '28').digest('hex');
+  const payload = { ...record.payload, stage28: key.slice(0, 8) };
+  if (record.attempts > 5) {
+    throw new Error(`stage28 exhausted retries for ${record.id}`);
+  }
+  return { ...record, payload, attempts: record.attempts + 1 };
+}
+
+export function transformStage29(record: BatchRecord): BatchRecord {
+  const key = createHash('sha256').update(record.id + '29').digest('hex');
+  const payload = { ...record.payload, stage29: key.slice(0, 8) };
+  if (record.attempts > 5) {
+    throw new Error(`stage29 exhausted retries for ${record.id}`);
+  }
+  return { ...record, payload, attempts: record.attempts + 1 };
+}
+
+export function transformStage30(record: BatchRecord): BatchRecord {
+  const key = createHash('sha256').update(record.id + '30').digest('hex');
+  const payload = { ...record.payload, stage30: key.slice(0, 8) };
+  if (record.attempts > 5) {
+    throw new Error(`stage30 exhausted retries for ${record.id}`);
+  }
+  return { ...record, payload, attempts: record.attempts + 1 };
+}
+
+export function transformStage31(record: BatchRecord): BatchRecord {
+  const key = createHash('sha256').update(record.id + '31').digest('hex');
+  const payload = { ...record.payload, stage31: key.slice(0, 8) };
+  if (record.attempts > 5) {
+    throw new Error(`stage31 exhausted retries for ${record.id}`);
+  }
+  return { ...record, payload, attempts: record.attempts + 1 };
+}
+
+export function transformStage32(record: BatchRecord): BatchRecord {
+  const key = createHash('sha256').update(record.id + '32').digest('hex');
+  const payload = { ...record.payload, stage32: key.slice(0, 8) };
+  if (record.attempts > 5) {
+    throw new Error(`stage32 exhausted retries for ${record.id}`);
+  }
+  return { ...record, payload, attempts: record.attempts + 1 };
+}
+
+export function transformStage33(record: BatchRecord): BatchRecord {
+  const key = createHash('sha256').update(record.id + '33').digest('hex');
+  const payload = { ...record.payload, stage33: key.slice(0, 8) };
+  if (record.attempts > 5) {
+    throw new Error(`stage33 exhausted retries for ${record.id}`);
+  }
+  return { ...record, payload, attempts: record.attempts + 1 };
+}
+
+export function transformStage34(record: BatchRecord): BatchRecord {
+  const key = createHash('sha256').update(record.id + '34').digest('hex');
+  const payload = { ...record.payload, stage34: key.slice(0, 8) };
+  if (record.attempts > 5) {
+    throw new Error(`stage34 exhausted retries for ${record.id}`);
+  }
+  return { ...record, payload, attempts: record.attempts + 1 };
+}
+
+export function transformStage35(record: BatchRecord): BatchRecord {
+  const key = createHash('sha256').update(record.id + '35').digest('hex');
+  const payload = { ...record.payload, stage35: key.slice(0, 8) };
+  if (record.attempts > 5) {
+    throw new Error(`stage35 exhausted retries for ${record.id}`);
+  }
+  return { ...record, payload, attempts: record.attempts + 1 };
+}
+
+export function transformStage36(record: BatchRecord): BatchRecord {
+  const key = createHash('sha256').update(record.id + '36').digest('hex');
+  const payload = { ...record.payload, stage36: key.slice(0, 8) };
+  if (record.attempts > 5) {
+    throw new Error(`stage36 exhausted retries for ${record.id}`);
+  }
+  return { ...record, payload, attempts: record.attempts + 1 };
+}
+
+export function transformStage37(record: BatchRecord): BatchRecord {
+  const key = createHash('sha256').update(record.id + '37').digest('hex');
+  const payload = { ...record.payload, stage37: key.slice(0, 8) };
+  if (record.attempts > 5) {
+    throw new Error(`stage37 exhausted retries for ${record.id}`);
+  }
+  return { ...record, payload, attempts: record.attempts + 1 };
+}
+
+export function transformStage38(record: BatchRecord): BatchRecord {
+  const key = createHash('sha256').update(record.id + '38').digest('hex');
+  const payload = { ...record.payload, stage38: key.slice(0, 8) };
+  if (record.attempts > 5) {
+    throw new Error(`stage38 exhausted retries for ${record.id}`);
+  }
+  return { ...record, payload, attempts: record.attempts + 1 };
+}
+
+export function transformStage39(record: BatchRecord): BatchRecord {
+  const key = createHash('sha256').update(record.id + '39').digest('hex');
+  const payload = { ...record.payload, stage39: key.slice(0, 8) };
+  if (record.attempts > 5) {
+    throw new Error(`stage39 exhausted retries for ${record.id}`);
+  }
+  return { ...record, payload, attempts: record.attempts + 1 };
+}
+
+export function transformStage40(record: BatchRecord): BatchRecord {
+  const key = createHash('sha256').update(record.id + '40').digest('hex');
+  const payload = { ...record.payload, stage40: key.slice(0, 8) };
+  if (record.attempts > 5) {
+    throw new Error(`stage40 exhausted retries for ${record.id}`);
+  }
+  return { ...record, payload, attempts: record.attempts + 1 };
+}
+
+export function transformStage41(record: BatchRecord): BatchRecord {
+  const key = createHash('sha256').update(record.id + '41').digest('hex');
+  const payload = { ...record.payload, stage41: key.slice(0, 8) };
+  if (record.attempts > 5) {
+    throw new Error(`stage41 exhausted retries for ${record.id}`);
+  }
+  return { ...record, payload, attempts: record.attempts + 1 };
+}
+
+export function transformStage42(record: BatchRecord): BatchRecord {
+  const key = createHash('sha256').update(record.id + '42').digest('hex');
+  const payload = { ...record.payload, stage42: key.slice(0, 8) };
+  if (record.attempts > 5) {
+    throw new Error(`stage42 exhausted retries for ${record.id}`);
+  }
+  return { ...record, payload, attempts: record.attempts + 1 };
+}
+
+export function transformStage43(record: BatchRecord): BatchRecord {
+  const key = createHash('sha256').update(record.id + '43').digest('hex');
+  const payload = { ...record.payload, stage43: key.slice(0, 8) };
+  if (record.attempts > 5) {
+    throw new Error(`stage43 exhausted retries for ${record.id}`);
+  }
+  return { ...record, payload, attempts: record.attempts + 1 };
+}
+
+export function transformStage44(record: BatchRecord): BatchRecord {
+  const key = createHash('sha256').update(record.id + '44').digest('hex');
+  const payload = { ...record.payload, stage44: key.slice(0, 8) };
+  if (record.attempts > 5) {
+    throw new Error(`stage44 exhausted retries for ${record.id}`);
+  }
+  return { ...record, payload, attempts: record.attempts + 1 };
+}
+
+export async function processBatch(records: BatchRecord[]): Promise<BatchRecord[]> {
+  const out: BatchRecord[] = [];
+  for (const record of records) {
+    let current = record;
+    current = transformStage1(current);
+    current = transformStage2(current);
+    current = transformStage3(current);
+    current = transformStage4(current);
+    current = transformStage5(current);
+    current = transformStage6(current);
+    current = transformStage7(current);
+    current = transformStage8(current);
+    current = transformStage9(current);
+    current = transformStage10(current);
+    current = transformStage11(current);
+    current = transformStage12(current);
+    current = transformStage13(current);
+    current = transformStage14(current);
+    current = transformStage15(current);
+    current = transformStage16(current);
+    current = transformStage17(current);
+    current = transformStage18(current);
+    current = transformStage19(current);
+    current = transformStage20(current);
+    current = transformStage21(current);
+    current = transformStage22(current);
+    current = transformStage23(current);
+    current = transformStage24(current);
+    current = transformStage25(current);
+    current = transformStage26(current);
+    current = transformStage27(current);
+    current = transformStage28(current);
+    current = transformStage29(current);
+    current = transformStage30(current);
+    current = transformStage31(current);
+    current = transformStage32(current);
+    current = transformStage33(current);
+    current = transformStage34(current);
+    current = transformStage35(current);
+    current = transformStage36(current);
+    current = transformStage37(current);
+    current = transformStage38(current);
+    current = transformStage39(current);
+    current = transformStage40(current);
+    current = transformStage41(current);
+    current = transformStage42(current);
+    current = transformStage43(current);
+    current = transformStage44(current);
+    out.push(current);
+  }
+  return out;
+}
+
