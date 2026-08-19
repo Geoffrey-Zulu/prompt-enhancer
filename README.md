@@ -3,8 +3,8 @@
 A VS Code extension that turns rough notes into structured, context-rich prompts — in the editor
 or in the chat panel.
 
-Design and build order live in [tdd.md](tdd.md). **Phase 1 (repo & scaffold) is complete**; the
-model call arrives in Phase 2.
+Design and build order live in [tdd.md](tdd.md); current state and what to do next are in
+[tasks.md](tasks.md). **Phase 1 (repo & scaffold) is complete**; the model call arrives in Phase 2.
 
 > The user-facing README, including the privacy disclosure required for the Marketplace listing,
 > is written in Phase 6. This file is developer setup only.
