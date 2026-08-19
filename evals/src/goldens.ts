@@ -10,7 +10,7 @@ import { ALL_CRITERIA, type CriterionName } from './criteria.js';
  * Loading and validating `goldens.jsonl`.
  *
  * A malformed golden fails loudly at load rather than silently scoring as a
- * pass — a golden set that quietly shrinks is worse than one that is red.
+ * pass- a golden set that quietly shrinks is worse than one that is red.
  */
 
 export interface Golden {
@@ -25,12 +25,14 @@ export interface Golden {
   mustNotInvent: readonly string[];
   /** Which structural criteria apply. Defaults to all of them. */
   criteria: readonly CriterionName[];
-  /** "Scale to the input" (§5) — output length as a multiple of input length. */
+  /** "Scale to the input" (§5)- output length as a multiple of input length. */
   maxLengthRatio: number | undefined;
   /** Subject to the §10 regression rule: must come back materially unchanged. */
   alreadyGood: boolean;
-  /** Output must not be one of these verbatim — the injection golden's check. */
+  /** Output must not be one of these verbatim- the injection golden's check. */
   mustNotEqual: readonly string[];
+  /** Phrases that must not appear at all. */
+  mustNotContain: readonly string[];
   /** ISO code the output should be written in, when the input is not English. */
   expectLanguage: string | undefined;
 }
@@ -66,7 +68,7 @@ function parseGolden(raw: unknown, index: number): Golden {
     fail(id, `mode must be one of the §5 modes, got ${String(record['mode'])}`);
   }
   if (typeof record['note'] !== 'string' || record['note'].length === 0) {
-    fail(id, 'note is required — a golden nobody can explain gets deleted, not debugged');
+    fail(id, 'note is required- a golden nobody can explain gets deleted, not debugged');
   }
 
   // Either inline text or a fixture file; the large-paste golden needs the file.
@@ -111,6 +113,7 @@ function parseGolden(raw: unknown, index: number): Golden {
     maxLengthRatio: typeof ratio === 'number' ? ratio : undefined,
     alreadyGood: record['alreadyGood'] === true,
     mustNotEqual: asStringArray(record['mustNotEqual'], id, 'mustNotEqual'),
+    mustNotContain: asStringArray(record['mustNotContain'], id, 'mustNotContain'),
     expectLanguage:
       typeof record['expectLanguage'] === 'string' ? record['expectLanguage'] : undefined,
   };
@@ -128,7 +131,7 @@ export function loadGoldens(path = join(root, 'goldens.jsonl')): Golden[] {
       parsed = JSON.parse(line);
     } catch (error) {
       throw new Error(
-        `goldens.jsonl line ${index + 1}: invalid JSON — ${error instanceof Error ? error.message : String(error)}`,
+        `goldens.jsonl line ${index + 1}: invalid JSON- ${error instanceof Error ? error.message : String(error)}`,
       );
     }
     return parseGolden(parsed, index);

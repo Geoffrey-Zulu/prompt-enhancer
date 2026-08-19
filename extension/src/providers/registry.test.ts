@@ -57,7 +57,7 @@ describe('looksLikeAnApiKey', () => {
     expect(looksLikeAnApiKey('my key is somewhere in my email')).toBe(false);
     expect(looksLikeAnApiKey('https://aistudio.google.com/apikey')).toBe(false);
 
-    // Anything key-shaped gets through, whatever its prefix — including a format
+    // Anything key-shaped gets through, whatever its prefix- including a format
     // that does not exist yet, which is the point.
     expect(looksLikeAnApiKey('AQ.Ab8RN6EEEEEEEEEEEEEEEEEEEEEEEE')).toBe(true);
     expect(looksLikeAnApiKey('sk-ant-api03-AAAAAAAAAAAAAAAA')).toBe(true);

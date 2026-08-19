@@ -14,7 +14,7 @@ import { log } from '../log.js';
 /**
  * Inserts the enhanced prompt at the cursor, or over the selection if there is
  * one. Unlike the editor rewrite this is not a change the user might not be
- * expecting — they clicked a button — so there is no document-version guard to
+ * expecting- they clicked a button- so there is no document-version guard to
  * keep: the target is wherever the cursor is *now*, which is what "insert into
  * editor" means.
  */

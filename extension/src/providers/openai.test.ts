@@ -72,7 +72,7 @@ describe('readAnswerText', () => {
   });
 
   it('maps an incomplete response to truncated or declined by its reason', () => {
-    // §6 reading rule 3, checked before the content is touched — both of these
+    // §6 reading rule 3, checked before the content is touched- both of these
     // carry partial text that must never reach the document.
     expect(() =>
       readAnswerText(

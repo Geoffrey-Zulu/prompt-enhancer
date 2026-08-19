@@ -6,7 +6,7 @@ import type { ProviderId } from '../providers/types.js';
  * The user's remembered, non-secret choices: which model per provider, and
  * which provider when several keys are stored (TDD §6, §7).
  *
- * `globalState` is the right home for these and the wrong home for a key — the
+ * `globalState` is the right home for these and the wrong home for a key- the
  * split is deliberate. Nothing secret is ever written here.
  *
  * Model IDs are stored, never defaulted: there is no hardcoded model anywhere
@@ -34,7 +34,7 @@ export class ChoiceStore {
   /**
    * The prompt-once-and-remember answer to "which provider" when more than one
    * key is stored (§7). The `promptEnhancer.provider` *setting* that takes
-   * precedence over this arrives with the other two adapters in Phase 3 — a
+   * precedence over this arrives with the other two adapters in Phase 3- a
    * contribution lands in the phase that implements it.
    */
   getProvider(): ProviderId | undefined {

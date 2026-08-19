@@ -1,7 +1,7 @@
 /**
  * The §10 quality bar, as checks.
  *
- * Every criterion asserts a **structural** property, never exact text — the
+ * Every criterion asserts a **structural** property, never exact text- the
  * point of a golden is that the prompt template can be reworded without the
  * suite going red, while a template that stops producing a usable prompt shape
  * fails immediately.
@@ -38,7 +38,7 @@ export interface CriterionResult {
 }
 
 const PATTERNS: Record<CriterionName, RegExp> = {
-  // "You are a…", "## Role", "Act as…" — any of the ways a prompt sets a stance.
+  // "You are a…", "## Role", "Act as…"- any of the ways a prompt sets a stance.
   role: /(^|\n)\s*(#{1,4}\s*|\**)\s*role\b|you are (a|an|the)\b|act as (a|an)\b/i,
   task: /(^|\n)\s*(#{1,4}\s*|\**)\s*(task|objective|goal)\b|your task is|you (must|should|need to) (write|change|produce|implement|design|refactor|add|fix)/i,
   constraints: /(^|\n)\s*(#{1,4}\s*|\**)\s*(constraints?|requirements?|rules?|boundaries)\b|must not\b|do not\b|don't\b|without (changing|breaking)/i,
@@ -116,6 +116,29 @@ export function checkNotInvented(
       name: `invents:${token}`,
       passed: !invented,
       detail: invented ? `"${token}" appears but the input never mentioned it` : '',
+    };
+  });
+}
+
+/**
+ * Phrases the output must not contain at all.
+ *
+ * Distinct from `mustNotInvent`, which asks whether a *term* was supplied that the
+ * input never mentioned. This asks whether a whole construct is absent - the
+ * `## Before you start` heading on a prompt that was already complete, for
+ * instance, which v2 of the template requires to be omitted rather than left as an
+ * empty ritual.
+ */
+export function checkNotContained(
+  output: string,
+  mustNotContain: readonly string[],
+): CriterionResult[] {
+  return mustNotContain.map((phrase) => {
+    const present = output.toLowerCase().includes(phrase.toLowerCase());
+    return {
+      name: `absent:${phrase}`,
+      passed: !present,
+      detail: present ? `"${phrase}" should not appear here` : '',
     };
   });
 }

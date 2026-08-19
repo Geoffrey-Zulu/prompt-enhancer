@@ -15,7 +15,7 @@ coverage/
 *.tsbuildinfo
 packages/prompts/src/generated/
 
-# Recorded eval runs — regenerate with `eval --record`; they hold model output,
+# Recorded eval runs- regenerate with `eval --record`; they hold model output,
 # not source, and go stale the moment the template changes.
 evals/recordings/
 

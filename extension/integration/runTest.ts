@@ -10,18 +10,18 @@ import { runTests } from '@vscode/test-electron';
  * way: that a replace is a *single* undo step, and that a document which moved
  * mid-request is not written to. Both are §9.1 promises about someone's file, and
  * a stubbed `vscode` module can only confirm that we called the API we meant to
- * call — not what the editor then did with it.
+ * call- not what the editor then did with it.
  */
 async function main(): Promise<void> {
   // This file is emitted as CommonJS into `out/integration/`, so the extension
-  // root — where package.json lives — is two levels up, not one. Getting this
+  // root- where package.json lives- is two levels up, not one. Getting this
   // wrong points VS Code at `out/` and it silently loads no extension.
   const here = __dirname;
   const extensionDevelopmentPath = resolve(here, '..', '..');
   const extensionTestsPath = resolve(here, 'index.js');
 
   // A VS Code integrated terminal exports ELECTRON_RUN_AS_NODE, and inheriting
-  // it makes the downloaded Code.exe start as plain Node — which then rejects
+  // it makes the downloaded Code.exe start as plain Node- which then rejects
   // every VS Code flag as a bad Node option and exits 9. Stripping the leaked
   // variables is what lets this run from inside an editor as well as from CI.
   for (const leaked of [

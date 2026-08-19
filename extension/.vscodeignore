@@ -1,11 +1,11 @@
-# Everything the .vsix does not need. The bundle in dist/ is self-contained —
-# tsup inlines the prompts package and all three provider SDKs (TDD §4) — so
+# Everything the .vsix does not need. The bundle in dist/ is self-contained-
+# tsup inlines the prompts package and all three provider SDKs (TDD §4)- so
 # node_modules must be excluded or the package carries three SDKs twice.
 node_modules/**
 src/**
 test/**
 # The integration suite's compiled output. Real emitted JavaScript, so unlike
-# src/ it is not caught by the *.ts rule below — and it must not ship: it exists
+# src/ it is not caught by the *.ts rule below- and it must not ship: it exists
 # only so mocha can run inside a downloaded VS Code.
 out/**
 integration/**

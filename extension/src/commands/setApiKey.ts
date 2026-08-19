@@ -23,7 +23,7 @@ import type { Services } from '../services/index.js';
  *   or log line in here interpolates it, and `log.ts` redacts regardless (§9.3).
  * - **Never store an invalid key silently.** The key is validated with one
  *   `listModels()` call *before* it is stored, and that same call populates the
- *   model quick-pick — one request, not two.
+ *   model quick-pick- one request, not two.
  */
 export async function setApiKey(services: Services): Promise<void> {
   const entered = await vscode.window.showInputBox({
@@ -43,10 +43,10 @@ export async function setApiKey(services: Services): Promise<void> {
     return;
   }
 
-  // A mis-paste — a sentence, a URL, an empty clipboard — fails here rather than
+  // A mis-paste- a sentence, a URL, an empty clipboard- fails here rather than
   // costing a round trip to a provider.
   if (!looksLikeAnApiKey(apiKey)) {
-    log.warn('rejected input that is not key-shaped — nothing stored');
+    log.warn('rejected input that is not key-shaped- nothing stored');
     void vscode.window.showErrorMessage(
       "Prompt Enhancer: that doesn't look like an API key. Nothing was stored.",
     );
@@ -54,7 +54,7 @@ export async function setApiKey(services: Services): Promise<void> {
   }
 
   // The prefix is a fast path, not a gate (§6). When it does not match anything
-  // we know, ask — because the alternative is refusing a key that works, which
+  // we know, ask- because the alternative is refusing a key that works, which
   // is precisely what happened when Google replaced its key format and this
   // extension only recognised the retired one.
   const detected = detectProvider(apiKey);
@@ -70,12 +70,12 @@ export async function setApiKey(services: Services): Promise<void> {
   // collides with another's, detection routes the key to the wrong adapter and the
   // user sees a flat "your key was rejected" for a key that is perfectly good.
   // Since the guess is already being checked against the provider, letting a
-  // rejection re-open the question makes a mis-guess self-correcting — and costs
+  // rejection re-open the question makes a mis-guess self-correcting- and costs
   // nothing on the path where the guess was right.
   if (attempt.models === undefined && detected !== undefined && isRoutingFailure(attempt.error)) {
     log.warn(`${detected} rejected the key; the prefix may have routed it wrongly`);
     const corrected = await askWhichProvider(
-      `${PROVIDER_LABELS[detected]} rejected that key — is it for a different provider?`,
+      `${PROVIDER_LABELS[detected]} rejected that key- is it for a different provider?`,
     );
     if (corrected === undefined) {
       await reportFailure(attempt.error, { provider });
@@ -89,7 +89,7 @@ export async function setApiKey(services: Services): Promise<void> {
 
   const models = attempt.models;
   if (models === undefined) {
-    log.warn(`${provider} key was not accepted — nothing stored`);
+    log.warn(`${provider} key was not accepted- nothing stored`);
     await reportFailure(attempt.error, { provider });
     return;
   }
@@ -107,7 +107,7 @@ export async function setApiKey(services: Services): Promise<void> {
   }
 
   void vscode.window.showInformationMessage(
-    `Prompt Enhancer: ${label} key saved — using ${model}.`,
+    `Prompt Enhancer: ${label} key saved- using ${model}.`,
   );
 }
 
@@ -115,7 +115,7 @@ export async function setApiKey(services: Services): Promise<void> {
  * Asks which provider an unrecognised key belongs to.
  *
  * The prompt says why it is asking, because "we don't recognise this" reads as
- * "this is wrong" otherwise — and the whole point of this path is that the key is
+ * "this is wrong" otherwise- and the whole point of this path is that the key is
  * probably fine and our table of prefixes is probably stale.
  */
 async function askWhichProvider(placeHolder?: string): Promise<ProviderId | undefined> {
@@ -130,7 +130,7 @@ async function askWhichProvider(placeHolder?: string): Promise<ProviderId | unde
       title: 'Prompt Enhancer: which provider is this key for?',
       placeHolder:
         placeHolder ??
-        'The key format is unfamiliar — it will still be checked before it is stored',
+        'The key format is unfamiliar- it will still be checked before it is stored',
       ignoreFocusOut: true,
     },
   );
@@ -147,8 +147,8 @@ interface ValidationAttempt {
  * One `listModels()` call: confirms the key works *and* populates the model
  * quick-pick (§7). Nothing is stored until this succeeds.
  *
- * Failures are captured rather than shown, because this may be called twice — a
- * rejected guess re-opens the provider question — and reporting each attempt
+ * Failures are captured rather than shown, because this may be called twice- a
+ * rejected guess re-opens the provider question- and reporting each attempt
  * would put two error toasts in front of the user for one key.
  */
 async function validate(provider: ProviderId, apiKey: string): Promise<ValidationAttempt> {

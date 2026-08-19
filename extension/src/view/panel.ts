@@ -55,7 +55,7 @@ export class PromptEnhancerViewProvider implements vscode.WebviewViewProvider {
     });
   }
 
-  /** Reveals the view and drops text into its input — used by the palette command. */
+  /** Reveals the view and drops text into its input- used by the palette command. */
   async prefill(text: string): Promise<void> {
     await vscode.commands.executeCommand(`${PromptEnhancerViewProvider.viewId}.focus`);
     this.post({ type: 'prefill', text });
@@ -107,7 +107,7 @@ export class PromptEnhancerViewProvider implements vscode.WebviewViewProvider {
       return;
     }
 
-    // Failures are rendered in the panel, not as notifications — the user is
+    // Failures are rendered in the panel, not as notifications- the user is
     // looking at the panel, and a toast behind it is a message they may miss.
     // Same reasoning the removed chat renderer had, same shared §9.4 table.
     const session: EnhanceSession | undefined = await resolveSession(
@@ -290,7 +290,7 @@ export class PromptEnhancerViewProvider implements vscode.WebviewViewProvider {
   </div>
 
   <p class="hint">Paste the result into Claude Code, ChatGPT, or any other chat.
-  Editing the result before you send it is expected — it is a draft, not an oracle.</p>
+  Editing the result before you send it is expected- it is a draft, not an oracle.</p>
 
 <script nonce="${nonce}">
   const vscode = acquireVsCodeApi();
@@ -362,7 +362,7 @@ export class PromptEnhancerViewProvider implements vscode.WebviewViewProvider {
         result.value = message.text;
         save();
         setRunning(false);
-        setStatus('Copied to your clipboard — paste it into your chat.');
+        setStatus('Copied to your clipboard- paste it into your chat.');
         break;
       case 'cancelled':
         setRunning(false);

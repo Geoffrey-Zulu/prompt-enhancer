@@ -7,7 +7,7 @@ You know the one you were about to type:
 > *I want you to fix the landing page, make it so so good*
 
 Prompt Enhancer rewrites that into a prompt that states a role, the task, the relevant context, the
-constraints, and the output format you want back — then puts it on your clipboard so you can paste it
+constraints, and the output format you want back- then puts it on your clipboard so you can paste it
 into whichever AI you actually use.
 
 It **invents nothing**. If you didn't say which framework, it won't pick one; it lists what's
@@ -19,7 +19,7 @@ Claude Code, ChatGPT, Copilot, Gemini, anything. The result goes to your clipboa
 
 That's deliberate, and it's a platform limit worth being straight about: **no VS Code extension can
 read or edit the text inside another extension's chat box.** Those panels are private to the extension
-that owns them. So "select what you typed in the chat and press a key" isn't something this — or any —
+that owns them. So "select what you typed in the chat and press a key" isn't something this- or any-
 extension can do. The clipboard is the one bridge that works everywhere.
 
 ## Bring your own key
@@ -28,7 +28,7 @@ No account, no sign-in, no server. You supply an API key for **Anthropic, OpenAI
 the extension talks to that provider directly.
 
 1. **Prompt Enhancer: Set API Key** from the command palette.
-2. Paste your key. The provider is worked out from the key — and if the format is unfamiliar, you're
+2. Paste your key. The provider is worked out from the key- and if the format is unfamiliar, you're
    asked rather than refused.
 3. Pick a model from the list your key can actually use.
 
@@ -48,7 +48,7 @@ Use this when you want to see the result, tweak it, or try a different mode.
 ### The shortcut
 
 <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>E</kbd> (<kbd>Cmd</kbd>+<kbd>Alt</kbd>+<kbd>E</kbd> on macOS)
-anywhere — including with a chat panel focused. Type the rough prompt, press Enter, and the enhanced
+anywhere- including with a chat panel focused. Type the rough prompt, press Enter, and the enhanced
 version is on your clipboard and open in a tab.
 
 Use this when you're mid-flow and just want the text.
@@ -58,7 +58,7 @@ Use this when you're mid-flow and just want the text.
 Select prompt text in a file and run **Prompt Enhancer: Enhance Selection** from the context menu or
 the palette. It's replaced in place, as a single undo step.
 
-This is for files that contain prompts — `CLAUDE.md`, `.github/copilot-instructions.md`, a system
+This is for files that contain prompts- `CLAUDE.md`, `.github/copilot-instructions.md`, a system
 prompt in your source, a scratch note. It is **not** for enhancing code: pointing it at a `.tsx` file
 will faithfully rewrite your component as a prompt, which is not useful to anyone.
 
@@ -70,20 +70,20 @@ exactly as it was and the result opens in a separate tab instead.
 | Mode | Pushes for |
 |---|---|
 | **code** (default) | The function to change, the behaviour expected afterwards, the error handling, how to verify it |
-| **architecture** | The problem, the forces, the alternatives, the non-functional requirements, the decision to be made — and explicitly no implementation code |
+| **architecture** | The problem, the forces, the alternatives, the non-functional requirements, the decision to be made- and explicitly no implementation code |
 | **refactor** | A behaviour-preserving change, with the response required to call out anywhere behaviour could shift |
 
 ## Privacy
 
-**The text you send is sent to whichever provider your API key belongs to — Anthropic, OpenAI, or
-Google AI — and nowhere else.** Which one follows entirely from the key you supply; set only an
+**The text you send is sent to whichever provider your API key belongs to- Anthropic, OpenAI, or
+Google AI- and nowhere else.** Which one follows entirely from the key you supply; set only an
 Anthropic key and your text only ever goes to Anthropic.
 
 - The extension has **no server**. Nothing is proxied through the author.
 - It collects **no telemetry** of any kind.
 - The author never sees your text or your key.
 - Your key is stored in the OS credential store via VS Code `SecretStorage`. It is never written to
-  your settings, your workspace, or a log — the log output strips key shapes unconditionally.
+  your settings, your workspace, or a log- the log output strips key shapes unconditionally.
 - On OpenAI, requests are sent with `store: false`, so your text isn't retained in your OpenAI account
   after the response.
 
@@ -115,7 +115,7 @@ Being straight about what has and hasn't been exercised against a live API:
 
 - The **Anthropic** path is the primary one and the template is tuned for it.
 - The **OpenAI** and **Google AI** adapters are complete and unit-tested against their SDKs, but have
-  not yet been run against the live APIs. If you hit something, please open an issue — it's more
+  not yet been run against the live APIs. If you hit something, please open an issue- it's more
   likely to be an untested assumption than a deep problem.
 
 ## Requirements

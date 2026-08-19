@@ -11,7 +11,7 @@ export default defineConfig({
   // A .vsix has no node_modules, so everything the extension needs at runtime
   // is bundled in: the workspace prompts package and each provider SDK (§4).
   // tsup treats `dependencies` as external by default, which is exactly wrong
-  // here — a missing entry in this list ships an extension that cannot resolve
+  // here- a missing entry in this list ships an extension that cannot resolve
   // its own SDK.
   noExternal: ['@prompt-enhancer/prompts', '@anthropic-ai/sdk', 'openai', '@google/genai'],
   sourcemap: true,

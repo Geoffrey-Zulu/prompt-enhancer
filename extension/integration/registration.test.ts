@@ -57,7 +57,7 @@ suite('activation and contributions', () => {
   });
 
   test('the panel view id matches the provider registration exactly', () => {
-    // A mismatch here is a view that renders nothing, with no error anywhere —
+    // A mismatch here is a view that renders nothing, with no error anywhere-
     // the same class of failure the removed chat participant had.
     const extension = vscode.extensions.getExtension(EXTENSION_ID);
     assert.ok(extension);
@@ -102,7 +102,7 @@ suite('activation and contributions', () => {
     // D7: ctrl+shift+e is Focus Explorer on every platform and must not be taken.
     assert.equal(binding?.key, 'ctrl+alt+e');
     // Deliberately unconditional. The shortcut belongs to the flow that works
-    // wherever you are — including with a chat panel focused, which is where a
+    // wherever you are- including with a chat panel focused, which is where a
     // prompt is actually being written. Gating it on `editorHasSelection` is what
     // made it feel broken: it did nothing, silently, almost everywhere.
     assert.equal(binding?.when, undefined);

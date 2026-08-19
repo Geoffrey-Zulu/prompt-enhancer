@@ -4,7 +4,7 @@ import { pickModel, resolveClient } from '../enhance/session.js';
 import type { Services } from '../services/index.js';
 
 /**
- * "Prompt Enhancer: Select Model" (TDD §6) — re-runs the quick-pick against the
+ * "Prompt Enhancer: Select Model" (TDD §6)- re-runs the quick-pick against the
  * active key, so changing model never requires hand-editing settings.
  *
  * The stored choice is step 2 of the resolution order, so a non-empty

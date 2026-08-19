@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { GoogleClient } from './google.js';
 
 /**
- * The request contract, asserted against the SDK with global `fetch` replaced —
+ * The request contract, asserted against the SDK with global `fetch` replaced-
  * same approach as the other two adapters' request suites.
  */
 
@@ -75,7 +75,7 @@ function client(): GoogleClient {
   return new GoogleClient(FAKE_KEY);
 }
 
-describe('GoogleClient.enhance — the request', () => {
+describe('GoogleClient.enhance- the request', () => {
   it('puts the system text in systemInstruction, not in the contents', async () => {
     await client().enhance(PROMPT, MODEL);
 
@@ -95,7 +95,7 @@ describe('GoogleClient.enhance — the request', () => {
     const generationConfig = captured[0]?.body['generationConfig'];
     // §6: no temperature / topP / topK. And no `thinkingConfig`: the model's own
     // default is the safe setting, and pinning a budget would be the same
-    // mistake as pinning a model ID — the right number changes per model.
+    // mistake as pinning a model ID- the right number changes per model.
     expect(generationConfig).toEqual({ maxOutputTokens: 32_000 });
   });
 
@@ -108,13 +108,13 @@ describe('GoogleClient.enhance — the request', () => {
     expect(captured[0]?.url).toContain(`models/${MODEL}:generateContent`);
   });
 
-  it('makes exactly one request — no retry layer of ours', async () => {
+  it('makes exactly one request- no retry layer of ours', async () => {
     await client().enhance(PROMPT, MODEL);
     expect(captured).toHaveLength(1);
   });
 });
 
-describe('GoogleClient.enhance — the response', () => {
+describe('GoogleClient.enhance- the response', () => {
   it('returns the answer and drops the thinking part that came with it', async () => {
     const result = await client().enhance(PROMPT, MODEL);
 
@@ -166,7 +166,7 @@ describe('GoogleClient.enhance — the response', () => {
     );
 
     // §6 wants cancellation threaded to the underlying request rather than
-    // cosmetic, so the assertion is that the signal reached `fetch` — not just
+    // cosmetic, so the assertion is that the signal reached `fetch`- not just
     // that something rejected.
     expect(captured[0]?.signal?.aborted).toBe(true);
   });
@@ -188,7 +188,7 @@ describe('GoogleClient.listModels', () => {
             supportedGenerationMethods: ['embedContent'],
           },
           // No reported actions at all: kept rather than hidden, because the
-          // filter is an exclusion — a model the API stops describing should
+          // filter is an exclusion- a model the API stops describing should
           // still be selectable (see the same reasoning in `openai.ts`).
           { name: 'models/an-undescribed-model', displayName: 'Undescribed' },
         ],

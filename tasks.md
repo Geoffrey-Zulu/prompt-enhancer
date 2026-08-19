@@ -1,9 +1,9 @@
-# Tasks — Prompt Enhancer
+# Tasks- Prompt Enhancer
 
 Working task list for the build order in [tdd.md](tdd.md) §11. Read the TDD first; this file
 tracks state, not design. Section references below (§) point at the TDD.
 
-**Current state:** rev 5 (D11) reworked the surfaces — see *Rev 5* below. Phase 5 is otherwise
+**Current state:** rev 5 (D11) reworked the surfaces- see *Rev 5* below. Phase 5 is otherwise
 complete except the parts needing keys or a publisher account. Remote is `github.com/Geoffrey-Zulu/prompt-enhancer`; `dev` is the
 default branch and holds Phases 1–4; `main` holds the baseline only.
 **Next up:** nothing is blocked on code. See *Owner-only / external steps*.
@@ -21,7 +21,7 @@ fallback, the chat Insert/Copy commands, every contribution having a handler, an
 leaving the buffer untouched.
 
 > **Provider model, rev 4:** the extension supports **Anthropic, OpenAI, and Google AI** (D2), each
-> an adapter behind one `ModelClient` interface (§6). **No model ID is hardcoded** — models are
+> an adapter behind one `ModelClient` interface (§6). **No model ID is hardcoded**- models are
 > discovered from the provider at runtime and overridable via a setting (D9). Earlier revisions
 > pinned a single provider (Gemini in rev 1, Anthropic in rev 3); both are superseded.
 >
@@ -54,9 +54,9 @@ key, and enhance a selection with <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>E</kbd>.
 
 Things worth knowing before you write any code:
 
-- **Prompt text goes in exactly one file.** `packages/prompts/templates/enhance.v1.md`. Do not add
+- **Prompt text goes in exactly one file.** `packages/prompts/templates/enhance.v2.md`. Do not add
   prompt strings to TypeScript (§5, D3).
-- **`packages/prompts` owns prompt text and nothing else.** No provider or model config lives there —
+- **`packages/prompts` owns prompt text and nothing else.** No provider or model config lives there-
   that's `extension/src/providers/`. `MODEL_ID` was removed from it in rev 4; don't add it back.
 - **Never hardcode a model ID** (D9). Not as a default, not as a fallback, not in a comment as "e.g.".
   Model IDs churn faster than releases; discovery is the design, not a nicety.
@@ -65,13 +65,13 @@ Things worth knowing before you write any code:
 - **`sk-ant-` is checked before `sk-`.** Anthropic keys also start `sk-`, so the wrong order routes
   every Anthropic key to the OpenAI adapter and fails as a baffling 401. Same trap in log redaction.
 - **Key prefixes are a hint, not a gate** (§6, revised). Google replaced its whole key format mid
-  project — AI Studio issues `AQ.` now and is retiring `AIza` — and the original design rejected
+  project- AI Studio issues `AQ.` now and is retiring `AIza`- and the original design rejected
   anything it did not recognise, which refused a working key. An unknown shape asks the user which
   provider it is for; validation against the provider is what actually gates storage. Do not turn the
   prefix table back into a gate, and do add a new format to it when one appears.
 - **Contributions land with their implementation.** Don't declare a command or participant in
   `package.json` before the code that handles it exists.
-- **The document is never modified on failure** (§9.1) — including by writing an empty, truncated, or
+- **The document is never modified on failure** (§9.1)- including by writing an empty, truncated, or
   reasoning-contaminated response over a selection.
 - **Never log or message an API key.** All logging goes through `extension/src/log.ts`, which
   redacts at the boundary (§9.3).
@@ -79,16 +79,16 @@ Things worth knowing before you write any code:
 
 ---
 
-## Rev 5 — the surfaces were wrong (D11)
+## Rev 5- the surfaces were wrong (D11)
 
 Found by the owner opening the extension and asking the obvious question: *a file contains code, not a
-prompt — what am I enhancing?* He was right, and it was worse than one misplaced feature.
+prompt- what am I enhancing?* He was right, and it was worse than one misplaced feature.
 
 - **The editor selection was the headline.** Enhancing a selection in a `.tsx` file means enhancing a
   component. The moment a prompt is actually written is in a chat box, and nothing served it.
 - **The chat participant was invisible to him.** `chatParticipants` registers into VS Code's *native*
   chat panel, which GitHub Copilot Chat provides. He runs `anthropic.claude-code` and `openai.chatgpt`
-  — neither hosts another extension's participant — so all of Phase 4 was dead code on his machine,
+ - neither hosts another extension's participant- so all of Phase 4 was dead code on his machine,
   silently.
 - **The keybinding was gated on `editorHasSelection`**, so `ctrl+alt+e` did nothing, with no message,
   almost everywhere. That is why it looked broken.
@@ -100,7 +100,7 @@ What changed:
       extension's home now.
 - [x] **A quick-input flow** (`promptEnhancer.enhancePrompt`) on an **unconditional** `ctrl+alt+e`,
       usable with a chat panel focused. Result to clipboard plus a preview tab.
-- [x] **The chat participant is removed** — contribution, handler, stream renderer and its tests.
+- [x] **The chat participant is removed**- contribution, handler, stream renderer and its tests.
       `enhanceStream` survives because the panel streams, which is what keeps D8's streaming half
       meaningful.
 - [x] **Editor selection kept but demoted:** context menu and palette, no default keybinding, and the
@@ -110,12 +110,12 @@ What changed:
       flaky.
 
 **The clipboard is the bridge, and it has to be.** No extension can read or write another extension's
-chat input — those panels are private webviews with no API. "Select it in the chat and press a key" is
+chat input- those panels are private webviews with no API. "Select it in the chat and press a key" is
 not buildable by anyone, so every surface here ends by copying.
 
 ---
 
-## Phase 1 — Repo & extension scaffold ✅ complete
+## Phase 1- Repo & extension scaffold ✅ complete
 
 - [x] `git init`, `main` branch, `.gitignore`, `.gitattributes` (LF normalised so the template
       sha256 is stable across platforms)
@@ -136,15 +136,15 @@ not buildable by anyone, so every surface here ends by copying.
 
 ### Open from Phase 1
 
-- [ ] **Manual smoke in the Extension Development Host** — press F5, select text, run the command,
+- [ ] **Manual smoke in the Extension Development Host**- press F5, select text, run the command,
       confirm the preview document opens and the output channel logs. This has never been run in a
       live editor, and it is the only Phase 1 acceptance item still unverified.
 
 ---
 
-## Phase 2 — One provider end to end ✅ complete
+## Phase 2- One provider end to end ✅ complete
 
-First shippable version. **Build one adapter, not three** — the interface only earns trust once a
+First shippable version. **Build one adapter, not three**- the interface only earns trust once a
 second implementation lands, and designing speculatively for three providers before one works is how
 abstractions go wrong. Pick whichever provider you have a key for; Anthropic is the primary for
 eval purposes (D10). Expect Phase 3 to change the interface, and keep provider specifics inside the
@@ -152,41 +152,41 @@ adapter so that change stays local.
 
 ### The provider abstraction (§6)
 
-- [x] `extension/src/providers/types.ts` — `ProviderId`, `ModelInfo`, `ModelClient`, and `ModelError`
+- [x] `extension/src/providers/types.ts`- `ProviderId`, `ModelInfo`, `ModelClient`, and `ModelError`
       with the `kind` union from §9.4 (`auth`, `forbidden`, `model_not_found`, `rate_limit`,
       `server`, `offline`, `truncated`, `declined`, `bad_request`, `no_key`)
-- [x] `extension/src/providers/registry.ts` — key-prefix detection and adapter construction
+- [x] `extension/src/providers/registry.ts`- key-prefix detection and adapter construction
       - [x] **`sk-ant-` before `sk-`**, with a unit test asserting an Anthropic key does not resolve
             to OpenAI
       - [x] unrecognised prefix → rejected at key-set time, not stored
       - [x] this is the **only** file allowed to `switch` on provider
 - [x] One adapter (`anthropic.ts` recommended), implementing `listModels`, `enhance`, `enhanceStream`
       - [x] Add its SDK to `extension/package.json`; confirm tsup bundles it (must not be `external`
-            — a `.vsix` has no `node_modules`)
+           - a `.vsix` has no `node_modules`)
       - [x] System text in the provider's system slot, never concatenated into user text
       - [x] No sampling params (see above)
       - [x] Output budget sized for reasoning **plus** answer where the cap covers both
       - [x] `AbortSignal` threaded to the underlying request
-      - [x] Prompt caching on the system block if the provider offers it — and nothing volatile
+      - [x] Prompt caching on the system block if the provider offers it- and nothing volatile
             interpolated into that block, or caching silently stops
-      - [x] **Select text parts explicitly and join** — never index content block zero; on
+      - [x] **Select text parts explicitly and join**- never index content block zero; on
             reasoning-capable models that's often internal reasoning
       - [x] Check the finish reason **before** using the content; map truncation and refusal to
             `ModelError`
-      - [x] Never return text not confirmed to be answer content — on the editor path it goes
+      - [x] Never return text not confirmed to be answer content- on the editor path it goes
             straight into the user's file
 
 ### Key and model handling (§7)
 
-- [x] `extension/src/services/SecretService.ts` — one key per provider
+- [x] `extension/src/services/SecretService.ts`- one key per provider
       (`promptEnhancer.apiKey.<provider>`), read per call, never cached in a module variable
-      - [x] clients constructed per call from that key — never at module scope, never from
+      - [x] clients constructed per call from that key- never at module scope, never from
             `process.env`
       - [x] never touches `workspace.configuration`, workspace state, or `globalState`
 - [x] Commands, **added to `extension/package.json` contributions in this phase**: "Set API Key"
       (`showInputBox` `password: true`, provider inferred from prefix), "Clear API Key",
       "Select Model"
-- [x] Validate on set with one `listModels()` call — confirms the key *and* populates the model
+- [x] Validate on set with one `listModels()` call- confirms the key *and* populates the model
       quick-pick in the same request. Never store an invalid key silently
 - [x] Model resolution order: `promptEnhancer.model` setting → stored per-provider choice →
       quick-pick on first use. Validate the setting **on use**, surfacing `model_not_found` with a
@@ -198,7 +198,7 @@ adapter so that change stays local.
 - [x] Rewrite `enhanceSelection` to replace the Phase 1 preview with the real call
       - [x] `withProgress` at `ProgressLocation.Notification`, cancellable; cancel aborts and leaves
             the document untouched
-      - [x] **Document-version guard** — capture `document.version` and the range up front; if the
+      - [x] **Document-version guard**- capture `document.version` and the range up front; if the
             document changed mid-flight, do not replace, open a preview instead (§8 Flow A.6)
       - [x] Single `editBuilder.replace()` on the original range so it is one undo step
 - [x] Extract the shared orchestration (resolve client → validate → render → call → deliver) so
@@ -225,11 +225,11 @@ structured prompt in one undo step; every failure path leaves the buffer exactly
 - `extension/src/enhance/` holds the shared orchestration: `session.ts` (provider → key → client →
   model), `runEnhance.ts` (validate → render → call), `deadline.ts` (the §9.5 30 s deadline, with
   user cancellation and timeout kept distinguishable), `report.ts` (the §9.4 table).
-- `extension/src/services/ChoiceStore.ts` holds the non-secret remembered choices — model per
-  provider, and provider when several keys are stored — in `globalState`. The key/model split in §7
+- `extension/src/services/ChoiceStore.ts` holds the non-secret remembered choices- model per
+  provider, and provider when several keys are stored- in `globalState`. The key/model split in §7
   is why this is a separate class from `SecretService`: one of them may never touch `globalState`.
 - `promptEnhancer.model` is contributed as a setting (§6 resolution step 1).
-  `promptEnhancer.provider` is **not** — it belongs to Phase 3, where a second key makes it
+  `promptEnhancer.provider` is **not**- it belongs to Phase 3, where a second key makes it
   meaningful. Until then the provider is prompt-once-and-remember via `ChoiceStore`.
 - **47 unit tests** in `extension` (`pnpm --filter prompt-enhancer test`), on top of the 6 in
   `packages/prompts`. `vitest.config.ts` aliases the host-injected `vscode` module to
@@ -246,33 +246,33 @@ structured prompt in one undo step; every failure path leaves the buffer exactly
   recorded properly. If it becomes a problem the fix is lazy `require()` per adapter, not dropping
   a provider.
 
-### Open from Phase 2 — what is left after the Phase 5 integration suite
+### Open from Phase 2- what is left after the Phase 5 integration suite
 
 Most of this is now covered by `extension/integration/` running in a real VS Code (§12). The items
 still open are the ones needing a real key or a network condition a test cannot create.
 
-- [x] **Single undo step** — verified: one undo restores the original text exactly.
-- [x] **Edit the document during the request** — verified: opens a preview, buffer byte-identical.
-- [x] **No-key path** — verified: the command leaves the document untouched and does not throw. (The
+- [x] **Single undo step**- verified: one undo restores the original text exactly.
+- [x] **Edit the document during the request**- verified: opens a preview, buffer byte-identical.
+- [x] **No-key path**- verified: the command leaves the document untouched and does not throw. (The
       notification text itself is unassertable; VS Code exposes no API for reading one.)
-- [x] **Empty/whitespace result refused** — verified, and a whitespace-only selection is refused
+- [x] **Empty/whitespace result refused**- verified, and a whitespace-only selection is refused
       before anything else happens.
 - [ ] **Happy path with a real key:** enhance a rough selection and confirm the replacement is a
       sensible prompt. The mechanics are verified; the *content* needs a model.
 - [ ] **Cancel mid-request** from the progress notification. The integration suite covers an
       already-cancelled token, not a cancel pressed halfway through a live stream.
-- [ ] **Bad key:** paste `sk-ant-` followed by junk — must report `auth` and store nothing.
+- [ ] **Bad key:** paste `sk-ant-` followed by junk- must report `auth` and store nothing.
 - [ ] **Bad model setting:** set `promptEnhancer.model` to a nonsense ID, enhance, confirm
       `model_not_found` names the model and offers Select Model.
-- [ ] **Offline** (disable networking) — must report offline, not a generic failure.
+- [ ] **Offline** (disable networking)- must report offline, not a generic failure.
 - [ ] **Output channel:** confirm diagnostics appear and no key ever does.
 
 ---
 
-## Phase 3 — The other two providers ✅ complete
+## Phase 3- The other two providers ✅ complete
 
 - [x] The remaining two adapters against the same interface. **Refactor `types.ts` if they expose a
-      bad assumption** — that is expected, and cheaper than having guessed in Phase 2
+      bad assumption**- that is expected, and cheaper than having guessed in Phase 2
 - [x] Per-provider key storage exercised with two or more keys stored simultaneously
 - [x] `promptEnhancer.provider` setting for choosing between stored keys; prompt-once-and-remember
       when it is unset
@@ -280,11 +280,11 @@ still open are the ones needing a real key or a network condition a test cannot 
 - [x] Redaction test extended to all three key shapes (§7)
 - [x] Confirm no `switch (provider)` has leaked outside `registry.ts`
 - [x] **Measure and record the `.vsix` size** (§4). Three bundled SDKs is the biggest thing this
-      design spends. If it's a problem, the fix is lazy `require()` per adapter — not dropping a
+      design spends. If it's a problem, the fix is lazy `require()` per adapter- not dropping a
       provider
 
 **Acceptance:** the same rough text enhances successfully through all three providers, and switching
-provider needs no re-paste of keys. **Unmet** — see below; it needs an OpenAI and a Google key.
+provider needs no re-paste of keys. **Unmet**- see below; it needs an OpenAI and a Google key.
 
 ### What the second and third implementations exposed
 
@@ -297,12 +297,12 @@ Three provider differences the adapters absorb rather than leak (§6):
 
 - **Reasoning is shaped differently in all three responses**, and getting it wrong writes the model's
   reasoning into the user's file. Anthropic: a separate `thinking` block. OpenAI: a `reasoning` output
-  item. **Google: a normal text part carrying `thought: true`** — the nastiest of the three, because a
+  item. **Google: a normal text part carrying `thought: true`**- the nastiest of the three, because a
   reader that concatenates every `part.text` looks correct and is not.
 - **`@google/genai` has one error class, not a hierarchy.** `ApiError` carries a numeric `status`, so
   its §9.4 mapping switches on that. Still structured data off a typed error, not a message match.
   It also answers a *bad key* with `400 INVALID_ARGUMENT` rather than 401, which is the one place any
-  adapter reads error text — documented in `google.ts` with the reasoning.
+  adapter reads error text- documented in `google.ts` with the reasoning.
 - **OpenAI's `listModels` has no capability data**, so it returns embeddings, speech and image models
   with no way to tell them apart. Both it and Google filter by *excluding* non-text families rather
   than allow-listing, so a newly released text model appears without a code change (D9's intent).
@@ -310,7 +310,7 @@ Three provider differences the adapters absorb rather than leak (§6):
 Two judgement calls worth a second opinion:
 
 - **No `reasoning: {effort}` on OpenAI.** The model list includes non-reasoning models and sending
-  `reasoning` to one is a 400 — so pinning an effort would make the user's model choice decide
+  `reasoning` to one is a 400- so pinning an effort would make the user's model choice decide
   whether the extension worked. Anthropic keeps `effort: 'low'`; Google keeps its default. The cost
   is that OpenAI reasoning spend is uncapped, which is why its output budget is 32 000, not 16 000.
 - **`store: false` on OpenAI.** The API default retains the user's selected text in their OpenAI
@@ -319,8 +319,8 @@ Two judgement calls worth a second opinion:
 ### Bundle size (§4)
 
 **The `.vsix` is 451 KB**, from a 2.6 MB bundle with the sourcemap excluded via a new
-`extension/.vscodeignore`. `@google/genai` and its transitive deps are ~1 600 KB of that — Vertex AI
-auth and the Live API's WebSocket stack, none of which this extension calls — against 447 KB for
+`extension/.vscodeignore`. `@google/genai` and its transitive deps are ~1 600 KB of that- Vertex AI
+auth and the Live API's WebSocket stack, none of which this extension calls- against 447 KB for
 Anthropic and 410 KB for OpenAI. Full table in tdd.md §4. **No action taken:** 451 KB is unremarkable
 for a Marketplace extension, and esbuild already wraps each module in a lazy initialiser, so an
 unused SDK is parsed but never executed.
@@ -332,18 +332,18 @@ harmlessly in a `.vsix` that has no `node_modules`. Verified, not assumed.
 ### Fixed after Phase 3 shipped
 
 - [x] **A working Google AI Studio key was rejected.** The prefix table only had `AIza`, and AI Studio
-      now issues `AQ.` authorization keys — `AIza` is the format Google is retiring, so *every* key a
+      now issues `AQ.` authorization keys- `AIza` is the format Google is retiring, so *every* key a
       new Google user creates was refused with "that doesn't look like a supported API key". Found by
       the owner trying a real key, which is exactly the class of bug no amount of stubbed testing
       reaches. Both prefixes are now recognised, redaction covers both shapes, and prefix detection is
-      a fast path rather than a gate — see tdd.md §6 for the revision and why.
+      a fast path rather than a gate- see tdd.md §6 for the revision and why.
 
-### Open from Phase 3 — needs keys, or a live editor
+### Open from Phase 3- needs keys, or a live editor
 
 - [ ] **The acceptance criterion itself:** enhance the same rough text through all three providers.
       This needs an OpenAI key and a Google AI key; only Anthropic has been exercisable. Every rule
       each adapter must follow is unit-tested against a stubbed `fetch`, which proves what goes on
-      the wire and how the response is read — **not** that the provider returns 200.
+      the wire and how the response is read- **not** that the provider returns 200.
 
       **The check is written.** `extension/src/providers/live.test.ts` runs the real adapters against
       the real APIs and asserts the criterion. It is skipped unless `PROMPT_ENHANCER_LIVE=1`, so a
@@ -353,7 +353,7 @@ harmlessly in a `.vsix` that has no `node_modules`. Verified, not assumed.
       PROMPT_ENHANCER_LIVE=1         ANTHROPIC_API_KEY=sk-ant-...         OPENAI_API_KEY=sk-...         GOOGLE_API_KEY=AIza...         pnpm --filter prompt-enhancer test:live
       ```
 
-      It names any provider it did not cover and **fails** on a partial run — "two of three work" is
+      It names any provider it did not cover and **fails** on a partial run- "two of three work" is
       not the bar Phase 3 set, and a green suite that quietly skipped a provider is how an unmet bar
       gets recorded as met. Per provider it checks: `listModels` (which is also key validation),
       `enhance` on one shared rough note, and `enhanceStream`. It asserts the output carries the
@@ -362,12 +362,12 @@ harmlessly in a `.vsix` that has no `node_modules`. Verified, not assumed.
 - [ ] **Two keys stored at once:** confirm the provider quick-pick appears, that the choice is
       remembered, and that `promptEnhancer.provider` overrides it.
 - [ ] **Switch provider without re-pasting:** store two keys, switch, enhance with each.
-- [ ] **Model quick-pick per provider:** confirm each list is populated and free of junk — in
+- [ ] **Model quick-pick per provider:** confirm each list is populated and free of junk- in
       particular that OpenAI's has no `dall-e` / `whisper` / embedding entries.
 
 ---
 
-## Phase 4 — Chat participant ✅ complete
+## Phase 4- Chat participant ✅ complete
 
 *(was Phase 3 before rev 4)*
 
@@ -375,7 +375,7 @@ harmlessly in a `.vsix` that has no `node_modules`. Verified, not assumed.
       `name: "enhance"`, `fullName`, `description`, `isSticky: true`, plus `/code`, `/architecture`,
       `/refactor` slash commands
 - [x] `extension/src/chat/` handler registered with
-      `vscode.chat.createChatParticipant('prompt-enhancer.enhance', handler)` — id must match the
+      `vscode.chat.createChatParticipant('prompt-enhancer.enhance', handler)`- id must match the
       contribution exactly
 - [x] Mode from the slash command, defaulting to `code`
 - [x] Stream via `enhanceStream`, rendering deltas with `ChatResponseStream.markdown()` as they
@@ -385,13 +385,13 @@ harmlessly in a `.vsix` that has no `node_modules`. Verified, not assumed.
 - [x] Follow-up actions: "Insert into editor", "Copy"
 
 **Acceptance:** `@enhance /refactor <rough note>` streams a structured prompt into the chat panel,
-and cancellation stops it mid-stream. **Unit-tested; unverified in a live chat panel** — see below.
+and cancellation stops it mid-stream. **Unit-tested; unverified in a live chat panel**- see below.
 
 ### What shipped, beyond the list above
 
 - **The §9.4 table now has two renderers and still only one copy.** `describeFailure` in
   `enhance/report.ts` classifies any failure; `reportFailure` renders it as a notification for Flow A
-  and `chat/streamReporter.ts` renders it into the chat stream for Flow B (§8 Flow B.4 — a missing key
+  and `chat/streamReporter.ts` renders it into the chat stream for Flow B (§8 Flow B.4- a missing key
   reported as a toast behind the panel is a message the user may never see). Two copies of a message
   table drift, and only one of them gets updated.
 - **`resolveSession` takes a `Reporter`**, defaulting to the notification one. That is the whole
@@ -399,7 +399,7 @@ and cancellation stops it mid-stream. **Unit-tested; unverified in a live chat p
 - **Actions are buttons, not follow-ups.** A `ChatFollowup` re-prompts the participant, so it is the
   wrong tool for "Insert into editor"; `stream.button()` invokes a real command and is the right one.
   `insertResult` / `copyResult` / `runFailureAction` are registered in code and deliberately **not**
-  contributed to `package.json` — each takes an argument, so a palette entry would be a broken one.
+  contributed to `package.json`- each takes an argument, so a palette entry would be a broken one.
   The follow-up provider offers something follow-ups are actually for: the same note in the two modes
   that were not used.
 - **`Retry` is a sentence in chat, not a button.** In Flow A retry re-runs a command the extension
@@ -410,15 +410,15 @@ and cancellation stops it mid-stream. **Unit-tested; unverified in a live chat p
   a request that never answers, and the first delta is the proof that it did.
 - **No buttons on an unfinished result.** The adapters check the terminal finish reason at the *end*
   of the stream, so a truncated or declined response has already rendered its partial text. It stays
-  on screen — it is a panel, not the user's file — but it is not offered as something to insert.
+  on screen- it is a panel, not the user's file- but it is not offered as something to insert.
 - 13 unit tests for the handler, driving it with a fake `ChatResponseStream`.
 
-### Open from Phase 4 — needs a live chat panel
+### Open from Phase 4- needs a live chat panel
 
 - [ ] `@enhance make the login form validate email` streams into the panel, and the header names the
       provider and model.
 - [ ] `/refactor`, `/architecture`, `/code` each change the mode; no slash command means `code`.
-- [ ] **Cancellation stops it mid-stream** — the acceptance bar. The unit test covers an
+- [ ] **Cancellation stops it mid-stream**- the acceptance bar. The unit test covers an
       already-cancelled token, not a cancel pressed halfway through a real stream.
 - [ ] **Insert into editor** puts the prompt at the cursor; **Copy** reaches the clipboard.
 - [ ] Follow-up chips appear and re-run the note in another mode.
@@ -426,11 +426,11 @@ and cancellation stops it mid-stream. **Unit-tested; unverified in a live chat p
 
 ---
 
-## Phase 5 — Evals, tests, packaging ✅ complete except what needs keys
+## Phase 5- Evals, tests, packaging ✅ complete except what needs keys
 
 *(was Phase 4 before rev 4, and Phase 6 before rev 2)*
 
-- [x] `evals/goldens.jsonl` — **17** rough → expected-shape pairs across all three modes, including:
+- [x] `evals/goldens.jsonl`- **17** rough → expected-shape pairs across all three modes, including:
       a one-word selection, a ~500-line paste, a selection that is **already a good prompt** (in all
       three modes), a non-English selection (in two), and one containing prompt-injection text
 - [x] Golden runner with `--provider` / `--model` flags, asserting *structural* properties (states a
@@ -438,48 +438,48 @@ and cancellation stops it mid-stream. **Unit-tested; unverified in a live chat p
       pass rate against `TEMPLATE_SHA256` **and** the provider + model that produced it
 - [x] **Regression rule:** the already-good-prompt golden must come back materially unchanged
 - [ ] **Per D10:** run the goldens on all three providers at least once per release and record the
-      three pass rates. **Needs keys** — the runner is written and verified against a replay fixture
+      three pass rates. **Needs keys**- the runner is written and verified against a replay fixture
 - [x] `@vscode/test-electron` suite: command registration, single-undo-step replace,
       document-changed guard, cancellation leaves the buffer untouched, participant streams,
-      no-key path shows the action — **17 tests, all passing.** Two caveats, recorded honestly:
+      no-key path shows the action- **17 tests, all passing.** Two caveats, recorded honestly:
       cancellation is covered as an already-cancelled token rather than a mid-stream cancel, and the
       participant's streaming is unit-tested rather than driven through a live panel
 - [x] CI: lint, typecheck, unit + integration on PR; `vsce package` artifact on `main`. The eval
-      runner stays out of CI — it needs real keys and spends real tokens
+      runner stays out of CI- it needs real keys and spends real tokens
 - [x] Marketplace README with the §13 privacy disclosure, **naming all three providers** and stating
       that the destination follows from the key you supply
-- [ ] `vsce` packaging — **packaging works** (455 KB, verified); still needs a real `publisher`
+- [ ] `vsce` packaging- **packaging works** (455 KB, verified); still needs a real `publisher`
       (currently `"TBD"`), a LICENSE file, and a PAT
 
 **Acceptance:** three pass rates recorded, integration suite green, `.vsix` builds.
-**Two of three met** — the integration suite is green and the `.vsix` builds. The three pass rates
+**Two of three met**- the integration suite is green and the `.vsix` builds. The three pass rates
 need keys.
 
 ### What shipped
 
 - **`evals/` is a new workspace package.** The runner drives the same adapters the extension ships
-  rather than the provider SDKs directly (§5: the eval runner is the third consumer of the prompt) —
+  rather than the provider SDKs directly (§5: the eval runner is the third consumer of the prompt)-
   an eval that talked to the SDKs itself would be grading code that does not ship.
 - **`--replay` scores a recorded run with no key and no tokens**, which is how a scoring change gets
   re-checked without re-spending. It warns when the recording predates the current template, because
   those scores are not comparable.
 - **`score.test.ts` is the part that matters.** A scoring suite that passes everything turns "the
   goldens are green" into a statement about nothing, so each of its 15 tests feeds an output wrong in
-  exactly one way and asserts that criterion — and only that one — goes red. Verified end to end
+  exactly one way and asserts that criterion- and only that one- goes red. Verified end to end
   against a replay fixture with two deliberate failures: 15/17, both caught with precise reasons.
 - **A `.vscodeignore`**, without which `vsce` packages three SDKs twice and ships the integration
   build output.
 
 ### What the work turned up
 
-- **A real 500-line code file exceeds the 20k char cap in §6**, so the cap — not the line count — is
+- **A real 500-line code file exceeds the 20k char cap in §6**, so the cap- not the line count- is
   the effective limit on a paste. The golden is sized to the largest legal input (459 lines) and says
   so.
 - **The template's "required shape" and its "scale to the input" rule conflict on a one-word input.**
   The design resolves that in favour of scaling down, so that golden asks only for a task and an
   output format and leans on a length bound instead. A test caught the contradiction.
 - **A real bug, found by the integration suite:** `insertResult`, `copyResult` and `runFailureAction`
-  are registered in code rather than contributed, so nothing could activate the extension for them —
+  are registered in code rather than contributed, so nothing could activate the extension for them-
   a chat button clicked after a window reload failed with "command not found". `package.json` now
   declares `onCommand:` activation events for exactly those three. Invisible to the unit suite, which
   activates nothing.
@@ -499,7 +499,7 @@ need keys.
          has the pre-hook its siblings had.
       3. **`reportFailure` blocked its caller.** A notification carrying a button does not settle
          until the user clicks it, so awaiting it meant the command never finished and
-         `executeCommand` hung — the no-key integration test sat there until mocha's 30 s timeout.
+         `executeCommand` hung- the no-key integration test sat there until mocha's 30 s timeout.
          Now fire-and-forget: 7,600ms → 135ms for that test, 12s → 4s for the suite. A unit test pins
          it.
 - [ ] **The D10 three-provider eval run**, and recording the pass rates in the README.
@@ -512,12 +512,12 @@ need keys.
 
 Cannot be done from a coding session:
 
-- [x] Create the GitHub repo and add the remote — `github.com/Geoffrey-Zulu/prompt-enhancer`,
+- [x] Create the GitHub repo and add the remote- `github.com/Geoffrey-Zulu/prompt-enhancer`,
       private, `dev` as the default branch
-- [ ] **Protect `main`** (and require a PR into `dev`) — branch protection on a *private* repo needs
+- [ ] **Protect `main`** (and require a PR into `dev`)- branch protection on a *private* repo needs
       GitHub Pro or above, so this could not be set from a session. Until then the branch policy in
       tdd.md §13 is a convention, not an enforced rule
-- [ ] **An API key per provider you want covered** — one is enough for Phase 2; all three are needed
+- [ ] **An API key per provider you want covered**- one is enough for Phase 2; all three are needed
       for Phase 3's acceptance and Phase 5's D10 eval run. Free or low-cost tiers are fine for
       development; the golden runs are cents, not dollars.
 
@@ -530,20 +530,20 @@ Cannot be done from a coding session:
       # Phase 5 / D10: one run per provider, three pass rates to record.
       ANTHROPIC_API_KEY=… pnpm --filter @prompt-enhancer/evals run eval -- --provider anthropic
       ```
-- [ ] VS Code Marketplace publisher ID + PAT — **Phase 5**
+- [ ] VS Code Marketplace publisher ID + PAT- **Phase 5**
 
-No Firebase project, billing budget, or Secret Manager entry is needed — those were proxy-only.
+No Firebase project, billing budget, or Secret Manager entry is needed- those were proxy-only.
 
 ---
 
 ## Deferred to v2 (do not build these now)
 
-- **`vscode.lm` / Copilot-backed access** — the answer for users with no key at all. Zero cost, no
+- **`vscode.lm` / Copilot-backed access**- the answer for users with no key at all. Zero cost, no
   auth, no abuse surface.
-- **Further providers** (Azure OpenAI, Bedrock, OpenRouter, local Ollama) — one more adapter each,
+- **Further providers** (Azure OpenAI, Bedrock, OpenRouter, local Ollama)- one more adapter each,
   once the interface has survived three implementations.
-- **Per-mode model selection** — a cheap model for `code`, a stronger one for `architecture`.
+- **Per-mode model selection**- a cheap model for `code`, a stronger one for `architecture`.
   Needs the D10 eval data to choose sensibly.
-- **The cloud proxy**, if ever wanted — returns as a whole workstream (see tdd.md §14).
+- **The cloud proxy**, if ever wanted- returns as a whole workstream (see tdd.md §14).
 - Prompt history and a saved-prompt library; workspace-aware context beyond `languageId`; team/org
   key management; usage telemetry.

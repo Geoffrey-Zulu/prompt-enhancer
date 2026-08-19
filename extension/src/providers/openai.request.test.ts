@@ -5,7 +5,7 @@ import { OpenAIClient } from './openai.js';
 
 /**
  * The request contract, asserted against the SDK with global `fetch` replaced,
- * so what these tests inspect is the body that would actually go on the wire —
+ * so what these tests inspect is the body that would actually go on the wire-
  * same approach as `anthropic.request.test.ts`, and for the same reason: none of
  * these rules is visible when reading the call site.
  */
@@ -82,7 +82,7 @@ function client(): OpenAIClient {
   return new OpenAIClient('sk-not-a-real-key');
 }
 
-describe('OpenAIClient.enhance — the request', () => {
+describe('OpenAIClient.enhance- the request', () => {
   it('uses the Responses API with the system text in the instructions slot', async () => {
     await client().enhance(PROMPT, MODEL);
 
@@ -103,7 +103,7 @@ describe('OpenAIClient.enhance — the request', () => {
 
   it('sends no reasoning effort, so a non-reasoning model is not a 400', async () => {
     // The model list this adapter offers includes non-reasoning models, and
-    // `reasoning` is rejected on those — so pinning an effort would make the
+    // `reasoning` is rejected on those- so pinning an effort would make the
     // user's model choice decide whether the extension worked at all.
     expect(captured).toHaveLength(0);
     await client().enhance(PROMPT, MODEL);
@@ -185,7 +185,7 @@ describe('OpenAIClient.listModels', () => {
 
     const models = await client().listModels();
 
-    // Nothing here names a model (D9) — the filter excludes non-text
+    // Nothing here names a model (D9)- the filter excludes non-text
     // *modalities*, so an unfamiliar new text model still comes through.
     expect(models.map((model) => model.id)).toEqual(['a-newer-chat-model', 'a-chat-model']);
   });

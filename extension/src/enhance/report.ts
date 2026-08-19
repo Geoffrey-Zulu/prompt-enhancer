@@ -19,7 +19,7 @@ import {
  * `describeFailure` is the §9.4 table and the only place it exists. The command
  * flows render it as a notification (`reportFailure`); the panel renders it
  * inline (`view/panel.ts`), because a toast behind the panel is a message the
- * user may never see. Two renderers, one table — two copies of a message table
+ * user may never see. Two renderers, one table- two copies of a message table
  * drift, and only one of them gets updated.
  *
  * The UI knows `ModelError.kind` and nothing about any provider's error
@@ -38,7 +38,7 @@ export interface FailureContext {
 export interface FailureDescription {
   message: string;
   action: Action | undefined;
-  /** `info` for states that are normal rather than broken — see `no_key`. */
+  /** `info` for states that are normal rather than broken- see `no_key`. */
   severity: 'error' | 'info';
 }
 
@@ -52,7 +52,7 @@ function modelName(model: string | undefined): string {
 
 /**
  * The §9.4 table. Every message names the provider or the model where one is
- * relevant — with three providers in play, "rate limit reached" without saying
+ * relevant- with three providers in play, "rate limit reached" without saying
  * whose is a support question waiting to happen.
  */
 function describeKind(
@@ -65,7 +65,7 @@ function describeKind(
   switch (kind) {
     case 'auth':
       return {
-        message: `That ${provider} API key was rejected — check it or set a new one.`,
+        message: `That ${provider} API key was rejected- check it or set a new one.`,
         action: 'Set API Key',
       };
     case 'forbidden':
@@ -80,16 +80,16 @@ function describeKind(
       };
     case 'rate_limit':
       return {
-        message: `${provider} rate limit reached — wait a moment and retry.`,
+        message: `${provider} rate limit reached- wait a moment and retry.`,
         action: 'Retry',
       };
     case 'server':
       return { message: `${provider} is unavailable right now.`, action: 'Retry' };
     case 'offline':
-      return { message: `Can't reach ${provider} — check your connection.`, action: undefined };
+      return { message: `Can't reach ${provider}- check your connection.`, action: undefined };
     case 'truncated':
       return {
-        message: `The result from ${model} was truncated — try a smaller selection.`,
+        message: `The result from ${model} was truncated- try a smaller selection.`,
         action: undefined,
       };
     case 'declined':
@@ -111,7 +111,7 @@ export function describeFailure(
   context: FailureContext = {},
 ): FailureDescription | undefined {
   if (error instanceof CancelledError) {
-    log.info('enhancement cancelled — nothing was written');
+    log.info('enhancement cancelled- nothing was written');
     return undefined;
   }
 
@@ -125,7 +125,7 @@ export function describeFailure(
     return {
       message,
       action,
-      // The no-key state is normal, not an error (§7) — the user simply has not
+      // The no-key state is normal, not an error (§7)- the user simply has not
       // set up yet, so it gets the same action without the alarm.
       severity: error.kind === 'no_key' ? 'info' : 'error',
     };
@@ -201,7 +201,7 @@ export async function reportFailure(
 
   // **Deliberately not awaited.** A notification carrying a button does not
   // settle until the user clicks it or it times out, so awaiting it here means
-  // the command that called us does not finish until someone dismisses a toast —
+  // the command that called us does not finish until someone dismisses a toast-
   // and `executeCommand` hangs for anything driving the extension. The message is
   // already on screen by this point; the action is handled when and if it comes.
   //

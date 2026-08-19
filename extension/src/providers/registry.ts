@@ -7,7 +7,7 @@ import { type ModelClient, type ProviderId } from './types.js';
  * Key-prefix detection and adapter construction (TDD §6).
  *
  * **This is the only file in the extension allowed to `switch` on provider.** A
- * `switch (provider)` anywhere else is a design failure — see §6.
+ * `switch (provider)` anywhere else is a design failure- see §6.
  */
 
 /** Every provider in the design (D2), in prefix-test order. */
@@ -15,7 +15,7 @@ export const ALL_PROVIDERS: readonly ProviderId[] = ['anthropic', 'openai', 'goo
 
 /**
  * Providers with a working adapter. All three as of Phase 3 (D2), so this no
- * longer excludes anything — it stays because it is what `setApiKey` checks
+ * longer excludes anything- it stays because it is what `setApiKey` checks
  * before storing a key, and a fourth provider will arrive as an adapter before
  * it arrives as an entry here.
  */
@@ -35,7 +35,7 @@ export function isImplemented(provider: ProviderId): boolean {
  *
  * **Both Google prefixes are live.** `AQ.` is the authorization-key format AI
  * Studio now issues; `AIza` is the older standard-key format Google is retiring.
- * Recognising only `AIza` — which is what this table did originally — rejects
+ * Recognising only `AIza`- which is what this table did originally- rejects
  * every Google key created today.
  */
 const KEY_PREFIXES: ReadonlyArray<readonly [prefix: string, provider: ProviderId]> = [
@@ -46,13 +46,13 @@ const KEY_PREFIXES: ReadonlyArray<readonly [prefix: string, provider: ProviderId
 ];
 
 /**
- * Detects the provider from the key prefix (§6) — a **fast path, not a gate.**
+ * Detects the provider from the key prefix (§6)- a **fast path, not a gate.**
  *
  * `undefined` means "no idea", not "invalid". Provider key formats change:
  * Google replaced its entire format while this extension was being written, and
  * a table of prefixes is exactly as durable as a hardcoded model ID (D9). So an
  * unrecognised shape asks the user which provider it belongs to rather than
- * refusing it, and the real gate stays where it always was — a key is validated
+ * refusing it, and the real gate stays where it always was- a key is validated
  * against the provider before it is stored (§7).
  */
 export function detectProvider(apiKey: string): ProviderId | undefined {
@@ -68,7 +68,7 @@ export function detectProvider(apiKey: string): ProviderId | undefined {
 
 /**
  * Whether a string could plausibly be an API key at all, independent of
- * provider. Catches a mis-paste — a sentence, a URL, an empty clipboard — so
+ * provider. Catches a mis-paste- a sentence, a URL, an empty clipboard- so
  * that obvious junk fails immediately instead of reaching a provider.
  *
  * Deliberately weak: it is a sanity check, not an authenticator. Anything that
@@ -80,13 +80,13 @@ export function looksLikeAnApiKey(candidate: string): boolean {
     return false;
   }
   // Pasting the page you got the key from, rather than the key, is a real
-  // mis-paste — and long enough with no spaces to pass everything above.
+  // mis-paste- and long enough with no spaces to pass everything above.
   return !key.includes('://');
 }
 
 /**
  * Builds the adapter for a provider. Called per enhancement from a key read per
- * call (§7) — the client is never held at module scope.
+ * call (§7)- the client is never held at module scope.
  */
 export function createClient(provider: ProviderId, apiKey: string): ModelClient {
   switch (provider) {

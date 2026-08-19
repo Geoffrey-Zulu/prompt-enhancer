@@ -8,7 +8,7 @@ import {
 
 // The runner drives the same adapters the extension ships (§5: the eval runner
 // is the third consumer of the prompt). Reaching across into the extension is
-// deliberate — an eval that talks to the provider SDKs directly would be
+// deliberate- an eval that talks to the provider SDKs directly would be
 // grading code that does not ship.
 import { createClient, detectProvider } from '../../extension/src/providers/registry.js';
 import {
@@ -30,7 +30,7 @@ import { scoreGolden, type GoldenScore } from './score.js';
  *
  * It reports pass rate against `TEMPLATE_SHA256` **and** the provider and model
  * that produced it, so a result is traceable to exact template bytes and an exact
- * model — which is what makes a golden result mean anything (§10, D10).
+ * model- which is what makes a golden result mean anything (§10, D10).
  *
  * Not in CI: it needs a real key and spends real tokens (§13).
  */
@@ -162,7 +162,7 @@ async function runLive(
     throw new Error(`${KEY_ENV[provider]} is not set`);
   }
   // Cross-check the env var name against the prefix where the prefix is one we
-  // know. `detectProvider` is a hint, not a gate (§6) — an unfamiliar format means
+  // know. `detectProvider` is a hint, not a gate (§6)- an unfamiliar format means
   // trust the variable it was put in.
   const detected = detectProvider(apiKey);
   if (detected !== undefined && detected !== provider) {
@@ -181,7 +181,7 @@ async function runLive(
         outputs.set(golden.id, await client.enhance(rendered, model));
         process.stdout.write(`  ran ${golden.id}\n`);
       } catch (error) {
-        // A failed call is a failed golden, not a crashed run — one provider
+        // A failed call is a failed golden, not a crashed run- one provider
         // refusing one input should not cost the other sixteen results.
         outputs.set(
           golden.id,
@@ -254,7 +254,7 @@ function report(
   );
   if (regressions.length > 0) {
     lines.push(
-      `REGRESSION RULE FAILED on ${regressions.map((score) => score.id).join(', ')} —` +
+      `REGRESSION RULE FAILED on ${regressions.map((score) => score.id).join(', ')}-` +
         ' an already-good prompt came back materially changed.',
     );
     lines.push('─'.repeat(72));

@@ -9,7 +9,7 @@ import { PROVIDER_LABELS, type ModelClient, type ProviderId } from './types.js';
  *
  * "The same rough text enhances successfully through all three providers, and
  * switching provider needs no re-paste of keys" cannot be asserted against a
- * stubbed `fetch` — the rest of the suite proves what goes on the wire and how a
+ * stubbed `fetch`- the rest of the suite proves what goes on the wire and how a
  * response is read, but not that a provider accepts the request. This does, and
  * it is the only suite here that spends real tokens.
  *
@@ -29,13 +29,13 @@ import { PROVIDER_LABELS, type ModelClient, type ProviderId } from './types.js';
  * someone's shell for an unrelated reason must not turn `pnpm test` into a bill.
  *
  * Keys come from the environment **here only**. The extension itself never reads
- * `process.env` (§7) — that is the whole point of `SecretService`, and a test is
+ * `process.env` (§7)- that is the whole point of `SecretService`, and a test is
  * not a reason to weaken it.
  */
 
 const LIVE = process.env['PROMPT_ENHANCER_LIVE'] === '1';
 
-/** The same rough text through every provider — that is what "the same" means. */
+/** The same rough text through every provider- that is what "the same" means. */
 const ROUGH_TEXT =
   'the login form should check the email is valid before submitting, currently it posts garbage to /api/session and we get a 500';
 
@@ -178,7 +178,7 @@ describe.skipIf(!LIVE)('live acceptance (spends real tokens)', () => {
     const allThree = covered.length === 3;
 
     console.log(
-      `\n  Phase 3 acceptance: ${allThree ? 'MET' : 'NOT MET'} — covered ${
+      `\n  Phase 3 acceptance: ${allThree ? 'MET' : 'NOT MET'}- covered ${
         covered.map((provider) => PROVIDER_LABELS[provider]).join(', ') || 'nothing'
       }.\n`,
     );

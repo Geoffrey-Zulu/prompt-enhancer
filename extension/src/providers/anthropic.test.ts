@@ -37,7 +37,7 @@ describe('readAnswerText', () => {
   it('joins the text blocks and never indexes block zero', () => {
     // §6 reading rule 1, and a live bug in rev 3 of the TDD: on a
     // reasoning-capable model the first block is usually internal reasoning, so
-    // `content[0].text` returns the wrong thing — or reasoning — and on the
+    // `content[0].text` returns the wrong thing- or reasoning- and on the
     // editor path that goes straight into the user's file.
     const result = readAnswerText(
       message({ content: [thinking('deliberating about the answer'), text('# Role\n'), text('You are…')] }),

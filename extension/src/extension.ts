@@ -12,11 +12,11 @@ import { createServices } from './services/index.js';
 import { PromptEnhancerViewProvider } from './view/panel.js';
 
 /**
- * Registration only — no logic lives here (TDD §3).
+ * Registration only- no logic lives here (TDD §3).
  */
 export function activate(context: vscode.ExtensionContext): void {
   initLog(context);
-  log.info(`activated — template ${TEMPLATE_VERSION}`);
+  log.info(`activated- template ${TEMPLATE_VERSION}`);
 
   // Built once and passed in. Nothing is held at module scope, so there is no
   // place an API key could be cached by accident (§7).

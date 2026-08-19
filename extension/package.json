@@ -1,7 +1,7 @@
 {
   "name": "prompt-enhancer",
   "displayName": "Prompt Enhancer",
-  "description": "Turn rough notes into structured, context-rich prompts — in the editor or in chat.",
+  "description": "Turn rough notes into structured, context-rich prompts- in the editor or in chat.",
   "version": "0.0.1",
   "private": true,
   "license": "UNLICENSED",
@@ -130,12 +130,12 @@
             "Use the stored Google AI key."
           ],
           "default": "",
-          "markdownDescription": "Which provider to use when you have more than one API key stored. Ignored when only one key is stored, and ignored if it names a provider you have no key for — the key you actually have is a better answer than an error. Leave empty to be asked once and have the choice remembered."
+          "markdownDescription": "Which provider to use when you have more than one API key stored. Ignored when only one key is stored, and ignored if it names a provider you have no key for- the key you actually have is a better answer than an error. Leave empty to be asked once and have the choice remembered."
         },
         "promptEnhancer.model": {
           "type": "string",
           "default": "",
-          "markdownDescription": "Model ID to use, overriding the model chosen with your API key. Leave empty to use the model picked by **Prompt Enhancer: Select Model**. Validated when it is used, so a typo shows up as \"model not available\" rather than being ignored. No model ID is hardcoded in this extension — run **Select Model** to see the ones your key can use."
+          "markdownDescription": "Model ID to use, overriding the model chosen with your API key. Leave empty to use the model picked by **Prompt Enhancer: Select Model**. Validated when it is used, so a typo shows up as \"model not available\" rather than being ignored. No model ID is hardcoded in this extension- run **Select Model** to see the ones your key can use."
         }
       }
     }

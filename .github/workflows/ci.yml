@@ -4,7 +4,7 @@ name: CI
 # main; a .vsix artifact on main, because that is the branch a release comes from.
 #
 # The eval runner (evals/) is deliberately absent. It needs real API keys and
-# spends real tokens, so it is run deliberately by a human — see §10.
+# spends real tokens, so it is run deliberately by a human- see §10.
 on:
   pull_request:
     branches: [dev, main]
@@ -43,7 +43,7 @@ jobs:
         run: pnpm -r test
 
       - name: Typecheck the integration suite
-        # `pnpm -r typecheck` does not cover extension/integration/ — that code is
+        # `pnpm -r typecheck` does not cover extension/integration/- that code is
         # emitted rather than checked in place, so its tsconfig is the thing that
         # checks it.
         run: pnpm --filter prompt-enhancer run compile:integration

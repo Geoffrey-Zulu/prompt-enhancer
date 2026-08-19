@@ -16,7 +16,7 @@ import type { Services } from '../services/index.js';
  * The primary flow: **enhance a prompt you are about to send to an AI.**
  *
  * The original design put the headline feature on an editor selection, which was
- * the wrong place. A prompt is not something you have lying in a `.tsx` file —
+ * the wrong place. A prompt is not something you have lying in a `.tsx` file-
  * it is something you are about to type into a chat box. This command works from
  * anywhere, including with a chat panel focused, and it leaves the result on the
  * clipboard so it can be pasted into whichever chat you actually use.
@@ -71,7 +71,7 @@ export async function enhancePrompt(services: Services): Promise<void> {
 }
 
 /**
- * Asks for the rough prompt, seeded from the editor selection when there is one —
+ * Asks for the rough prompt, seeded from the editor selection when there is one-
  * so this command subsumes the editor path rather than competing with it.
  */
 async function askForRoughText(): Promise<string | undefined> {
@@ -111,7 +111,7 @@ function selectedText(): string | undefined {
   return text.length === 0 || text.length > 2_000 ? undefined : text;
 }
 
-/** The mode setting, validated on read — an unknown value falls back, loudly. */
+/** The mode setting, validated on read- an unknown value falls back, loudly. */
 function resolveMode(): EnhanceMode {
   const configured = vscode.workspace
     .getConfiguration('promptEnhancer')
@@ -131,7 +131,7 @@ function resolveMode(): EnhanceMode {
 /**
  * Clipboard first, then a tab.
  *
- * The clipboard is the point — the next thing the user does is paste this into a
+ * The clipboard is the point- the next thing the user does is paste this into a
  * chat. The tab exists because a prompt that only lives on the clipboard is one
  * <kbd>Ctrl</kbd>+<kbd>C</kbd> away from being lost, and because it is worth
  * reading before sending.
@@ -150,7 +150,7 @@ async function deliver(enhanced: string): Promise<void> {
   });
 
   void vscode.window.setStatusBarMessage(
-    '$(clippy) Prompt Enhancer: enhanced prompt copied — paste it into your chat',
+    '$(clippy) Prompt Enhancer: enhanced prompt copied- paste it into your chat',
     5_000,
   );
 }

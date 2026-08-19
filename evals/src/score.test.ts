@@ -7,7 +7,7 @@ import { scoreGolden } from './score.js';
  * These tests exist because a scoring suite that passes everything is worse than
  * no scoring suite: it turns "the goldens are green" into a statement about
  * nothing. So each check below feeds the scorer an output that is wrong in
- * exactly one way and asserts the corresponding criterion — and only that one —
+ * exactly one way and asserts the corresponding criterion- and only that one-
  * goes red.
  */
 
@@ -16,7 +16,7 @@ const goldens = loadGoldens();
 function golden(id: string): Golden {
   const found = goldens.find((candidate) => candidate.id === id);
   if (found === undefined) {
-    throw new Error(`no golden "${id}" — a test is out of date with goldens.jsonl`);
+    throw new Error(`no golden "${id}"- a test is out of date with goldens.jsonl`);
   }
   return found;
 }
@@ -69,7 +69,7 @@ describe('the golden set itself', () => {
 
   it('keeps every input inside the §6 cap, or the runner would never send it', () => {
     // A golden the extension would reject before calling out is not testing the
-    // model — it is testing the cap, which has its own unit test.
+    // model- it is testing the cap, which has its own unit test.
     for (const entry of goldens) {
       expect(entry.rough.length, entry.id).toBeLessThanOrEqual(20_000);
     }

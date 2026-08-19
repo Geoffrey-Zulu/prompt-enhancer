@@ -7,7 +7,7 @@ import type { RenderedPrompt } from '@prompt-enhancer/prompts';
  * `switch (provider)` anywhere outside `registry.ts` is a design failure.
  *
  * Phase 2 ships one adapter. Phase 3 adds the other two and is expected to
- * change this file — which is why provider specifics live in the adapters.
+ * change this file- which is why provider specifics live in the adapters.
  */
 
 export type ProviderId = 'anthropic' | 'openai' | 'google';
@@ -55,7 +55,7 @@ export interface ModelClient {
 
 /**
  * The common failure taxonomy (§9.4). Adapters map their SDK's **typed error
- * classes** onto these — never by matching message strings — and the UI maps
+ * classes** onto these- never by matching message strings- and the UI maps
  * `kind` to a message and an action. This is the only way three providers stay
  * presentable without the UI knowing three error taxonomies.
  */

@@ -9,7 +9,7 @@ import { applyEnhancement, documentMoved } from '../src/enhance/deliverToEditor.
  * These call `applyEnhancement` directly with a canned result rather than driving
  * a model. That is deliberate: the thing under test is what happens to the user's
  * buffer, and pinning that down should not depend on a network call, an API key,
- * or what a model happened to return today. The model call has its own coverage —
+ * or what a model happened to return today. The model call has its own coverage-
  * `providers/*.request.test.ts` for the wire, `providers/live.test.ts` for real
  * APIs.
  */
@@ -21,7 +21,7 @@ const ENHANCED = '## Role\nYou are a senior engineer.\n\n## Task\nFix the null c
 /**
  * A document owns its end-of-line sequence, and VS Code normalises inserted text
  * to it. A single-line untitled document has no newline to infer one from, so on
- * Windows it gets CRLF and the enhancement comes back with CRLF — correct editor
+ * Windows it gets CRLF and the enhancement comes back with CRLF- correct editor
  * behaviour. Comparing raw text would assert on whichever platform ran the suite
  * rather than on anything the extension does.
  */
@@ -66,7 +66,7 @@ async function closeEverything(): Promise<void> {
  *
  * `executeCommand('undo')` resolves when the command has been *dispatched*, not
  * when the document model reflects it, so asserting immediately after it is a
- * race — one that passes almost always and fails just often enough to teach
+ * race- one that passes almost always and fails just often enough to teach
  * people to re-run the suite. The single-undo-step guarantee is the most
  * important thing this file asserts; it does not get to be flaky.
  */
@@ -84,10 +84,10 @@ async function waitFor(
   }
 }
 
-suite('Flow A — delivery to the editor', () => {
+suite('Flow A- delivery to the editor', () => {
   suiteSetup(async () => {
     // Activated explicitly so the suite does not depend on the order mocha
-    // happens to load files in — a test that only passes second is not a test.
+    // happens to load files in- a test that only passes second is not a test.
     await vscode.extensions.getExtension(EXTENSION_ID)?.activate();
   });
 
@@ -107,7 +107,7 @@ suite('Flow A — delivery to the editor', () => {
   test('is a single undo step', async () => {
     // §8 A.6, and the reason the whole replace is one `editBuilder.replace` in
     // one `editor.edit`. If it were two edits, one undo would leave the user
-    // looking at half an enhancement — the §9.1 failure in slow motion.
+    // looking at half an enhancement- the §9.1 failure in slow motion.
     const fixture = await openWithSelection();
 
     await applyEnhancement(targetFor(fixture), ENHANCED);
@@ -206,7 +206,7 @@ suite('chat delivery commands', () => {
     // These three commands are registered in code rather than contributed, so
     // package.json declares `onCommand:` activation events for them. Without
     // those, a chat button clicked after a window reload fails with "command not
-    // found" — which is how this suite found that gap.
+    // found"- which is how this suite found that gap.
     await vscode.extensions.getExtension(EXTENSION_ID)?.activate();
   });
 
