@@ -3,10 +3,14 @@
 Working task list for the build order in [tdd.md](tdd.md) §11. Read the TDD first; this file
 tracks state, not design. Section references below (§) point at the TDD.
 
-**Current state:** Phase 3 complete on `feature/phase-3-providers`, open as a pull request into
-`dev`. Remote is `github.com/Geoffrey-Zulu/prompt-enhancer`; `dev` is the default branch and holds
-Phases 1–2; `main` holds the baseline only, because nothing is production-ready until Phase 5.
-**Next up:** Phase 4 — the chat participant. **Branch it from `dev`** (see tdd.md §13).
+**Current state:** Phases 3 and 4 complete on `feature/phase-3-providers`, open as a pull request
+into `dev`. Remote is `github.com/Geoffrey-Zulu/prompt-enhancer`; `dev` is the default branch and
+holds Phases 1–2; `main` holds the baseline only, because nothing is production-ready until Phase 5.
+**Next up:** Phase 5 — evals, integration tests, packaging. **Branch it from `dev`** (tdd.md §13).
+
+**One acceptance bar is unmet and cannot be met from a coding session:** Phase 3 requires enhancing
+the same text through all three providers, which needs an OpenAI key and a Google AI key. The check
+is written and runnable — `pnpm --filter prompt-enhancer test:live` — see *Open from Phase 3*.
 
 > **Provider model, rev 4:** the extension supports **Anthropic, OpenAI, and Google AI** (D2), each
 > an adapter behind one `ModelClient` interface (§6). **No model ID is hardcoded** — models are
@@ -280,6 +284,21 @@ harmlessly in a `.vsix` that has no `node_modules`. Verified, not assumed.
       This needs an OpenAI key and a Google AI key; only Anthropic has been exercisable. Every rule
       each adapter must follow is unit-tested against a stubbed `fetch`, which proves what goes on
       the wire and how the response is read — **not** that the provider returns 200.
+
+      **The check is written.** `extension/src/providers/live.test.ts` runs the real adapters against
+      the real APIs and asserts the criterion. It is skipped unless `PROMPT_ENHANCER_LIVE=1`, so a
+      key sitting in a shell for another reason cannot turn `pnpm test` into a bill:
+
+      ```bash
+      PROMPT_ENHANCER_LIVE=1         ANTHROPIC_API_KEY=sk-ant-...         OPENAI_API_KEY=sk-...         GOOGLE_API_KEY=AIza...         pnpm --filter prompt-enhancer test:live
+      ```
+
+      It names any provider it did not cover and **fails** on a partial run — "two of three work" is
+      not the bar Phase 3 set, and a green suite that quietly skipped a provider is how an unmet bar
+      gets recorded as met. Per provider it checks: `listModels` (which is also key validation),
+      `enhance` on one shared rough note, and `enhanceStream`. It asserts the output carries the
+      input's concrete details verbatim, states at least three of role/task/context/constraints/
+      output-format, and contains no `<thinking>` markup or echoed system prompt.
 - [ ] **Two keys stored at once:** confirm the provider quick-pick appears, that the choice is
       remembered, and that `promptEnhancer.provider` overrides it.
 - [ ] **Switch provider without re-pasting:** store two keys, switch, enhance with each.
@@ -288,29 +307,66 @@ harmlessly in a `.vsix` that has no `node_modules`. Verified, not assumed.
 
 ---
 
-## Phase 4 — Chat participant ⬅ next
+## Phase 4 — Chat participant ✅ complete
 
 *(was Phase 3 before rev 4)*
 
-- [ ] Declare `chatParticipants` in `extension/package.json`: `id: "prompt-enhancer.enhance"`,
+- [x] Declare `chatParticipants` in `extension/package.json`: `id: "prompt-enhancer.enhance"`,
       `name: "enhance"`, `fullName`, `description`, `isSticky: true`, plus `/code`, `/architecture`,
       `/refactor` slash commands
-- [ ] `extension/src/chat/` handler registered with
+- [x] `extension/src/chat/` handler registered with
       `vscode.chat.createChatParticipant('prompt-enhancer.enhance', handler)` — id must match the
       contribution exactly
-- [ ] Mode from the slash command, defaulting to `code`
-- [ ] Stream via `enhanceStream`, rendering deltas with `ChatResponseStream.markdown()` as they
+- [x] Mode from the slash command, defaulting to `code`
+- [x] Stream via `enhanceStream`, rendering deltas with `ChatResponseStream.markdown()` as they
       arrive (D8); check the terminal finish reason before treating the result as complete
-- [ ] Name the active provider and model in the response so the user knows which model answered
-- [ ] Honour the handler's `CancellationToken`
-- [ ] Follow-up actions: "Insert into editor", "Copy"
+- [x] Name the active provider and model in the response so the user knows which model answered
+- [x] Honour the handler's `CancellationToken`
+- [x] Follow-up actions: "Insert into editor", "Copy"
 
 **Acceptance:** `@enhance /refactor <rough note>` streams a structured prompt into the chat panel,
-and cancellation stops it mid-stream.
+and cancellation stops it mid-stream. **Unit-tested; unverified in a live chat panel** — see below.
+
+### What shipped, beyond the list above
+
+- **The §9.4 table now has two renderers and still only one copy.** `describeFailure` in
+  `enhance/report.ts` classifies any failure; `reportFailure` renders it as a notification for Flow A
+  and `chat/streamReporter.ts` renders it into the chat stream for Flow B (§8 Flow B.4 — a missing key
+  reported as a toast behind the panel is a message the user may never see). Two copies of a message
+  table drift, and only one of them gets updated.
+- **`resolveSession` takes a `Reporter`**, defaulting to the notification one. That is the whole
+  mechanism by which both flows share key and model resolution without sharing a UI.
+- **Actions are buttons, not follow-ups.** A `ChatFollowup` re-prompts the participant, so it is the
+  wrong tool for "Insert into editor"; `stream.button()` invokes a real command and is the right one.
+  `insertResult` / `copyResult` / `runFailureAction` are registered in code and deliberately **not**
+  contributed to `package.json` — each takes an argument, so a palette entry would be a broken one.
+  The follow-up provider offers something follow-ups are actually for: the same note in the two modes
+  that were not used.
+- **`Retry` is a sentence in chat, not a button.** In Flow A retry re-runs a command the extension
+  still holds; in chat it means re-sending the message, which the extension cannot do for the user. A
+  button that does nothing when clicked is worse than no button.
+- **The §9.5 deadline applies to time-to-first-delta, not to the whole stream.** A 30 s cap on the
+  total would kill a long generation halfway and call it a timeout. What the rule protects against is
+  a request that never answers, and the first delta is the proof that it did.
+- **No buttons on an unfinished result.** The adapters check the terminal finish reason at the *end*
+  of the stream, so a truncated or declined response has already rendered its partial text. It stays
+  on screen — it is a panel, not the user's file — but it is not offered as something to insert.
+- 13 unit tests for the handler, driving it with a fake `ChatResponseStream`.
+
+### Open from Phase 4 — needs a live chat panel
+
+- [ ] `@enhance make the login form validate email` streams into the panel, and the header names the
+      provider and model.
+- [ ] `/refactor`, `/architecture`, `/code` each change the mode; no slash command means `code`.
+- [ ] **Cancellation stops it mid-stream** — the acceptance bar. The unit test covers an
+      already-cancelled token, not a cancel pressed halfway through a real stream.
+- [ ] **Insert into editor** puts the prompt at the cursor; **Copy** reaches the clipboard.
+- [ ] Follow-up chips appear and re-run the note in another mode.
+- [ ] With no key stored, the failure and its **Set API Key** button appear *in the panel*.
 
 ---
 
-## Phase 5 — Evals, tests, packaging
+## Phase 5 — Evals, tests, packaging ⬅ next
 
 *(was Phase 4 before rev 4, and Phase 6 before rev 2)*
 

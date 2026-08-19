@@ -48,6 +48,29 @@
         "category": "Prompt Enhancer"
       }
     ],
+    "chatParticipants": [
+      {
+        "id": "prompt-enhancer.enhance",
+        "name": "enhance",
+        "fullName": "Prompt Enhancer",
+        "description": "Turn a rough note into a structured prompt",
+        "isSticky": true,
+        "commands": [
+          {
+            "name": "code",
+            "description": "A prompt that yields working code"
+          },
+          {
+            "name": "architecture",
+            "description": "A prompt that yields a design, not an implementation"
+          },
+          {
+            "name": "refactor",
+            "description": "A prompt that yields a behaviour-preserving change"
+          }
+        ]
+      }
+    ],
     "keybindings": [
       {
         "command": "promptEnhancer.enhanceSelection",
@@ -102,7 +125,8 @@
     "pretypecheck": "pnpm run deps",
     "typecheck": "tsc --noEmit",
     "vscode:prepublish": "pnpm run build",
-    "test": "vitest run"
+    "test": "vitest run",
+    "test:live": "vitest run src/providers/live.test.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.117.1",

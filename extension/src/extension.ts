@@ -1,7 +1,10 @@
 import * as vscode from 'vscode';
 import { TEMPLATE_VERSION } from '@prompt-enhancer/prompts';
 
+import { registerChatParticipant } from './chat/participant.js';
+import { runFailureAction } from './chat/streamReporter.js';
 import { clearApiKey } from './commands/clearApiKey.js';
+import { copyResult, insertResult } from './commands/deliverResult.js';
 import { enhanceSelection } from './commands/enhanceSelection.js';
 import { selectModel } from './commands/selectModel.js';
 import { setApiKey } from './commands/setApiKey.js';
@@ -26,7 +29,15 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand('promptEnhancer.setApiKey', () => setApiKey(services)),
     vscode.commands.registerCommand('promptEnhancer.clearApiKey', () => clearApiKey(services)),
     vscode.commands.registerCommand('promptEnhancer.selectModel', () => selectModel(services)),
+
+    // Chat button targets. Registered here but not contributed to package.json:
+    // each takes an argument, so a palette entry would be a broken one.
+    vscode.commands.registerCommand('promptEnhancer.insertResult', insertResult),
+    vscode.commands.registerCommand('promptEnhancer.copyResult', copyResult),
+    vscode.commands.registerCommand('promptEnhancer.runFailureAction', runFailureAction),
   );
+
+  registerChatParticipant(context, services);
 }
 
 export function deactivate(): void {
