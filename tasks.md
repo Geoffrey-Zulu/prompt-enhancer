@@ -3,8 +3,9 @@
 Working task list for the build order in [tdd.md](tdd.md) §11. Read the TDD first; this file
 tracks state, not design. Section references below (§) point at the TDD.
 
-**Current state:** Phase 1 complete on branch `feature/phase-1-scaffold`. Not merged, no remote.
-**Next up:** Phase 2 — one provider end to end.
+**Current state:** Phase 2 complete on branch `feature/phase-2-byok` (off `feature/phase-1-scaffold`).
+Nothing merged, no remote.
+**Next up:** Phase 3 — the other two providers.
 
 > **Provider model, rev 4:** the extension supports **Anthropic, OpenAI, and Google AI** (D2), each
 > an adapter behind one `ModelClient` interface (§6). **No model ID is hardcoded** — models are
@@ -31,8 +32,12 @@ pnpm -r typecheck
 pnpm --filter @prompt-enhancer/prompts test
 ```
 
-Then press <kbd>F5</kbd> ("Run Extension") and enhance a selection with
-<kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>E</kbd>.
+```bash
+pnpm --filter prompt-enhancer test
+```
+
+Then press <kbd>F5</kbd> ("Run Extension"), run **Prompt Enhancer: Set API Key** with an Anthropic
+key, and enhance a selection with <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>E</kbd>.
 
 Things worth knowing before you write any code:
 
@@ -83,7 +88,7 @@ Things worth knowing before you write any code:
 
 ---
 
-## Phase 2 — One provider end to end ⬅ next
+## Phase 2 — One provider end to end ✅ complete
 
 First shippable version. **Build one adapter, not three** — the interface only earns trust once a
 second implementation lands, and designing speculatively for three providers before one works is how
@@ -93,77 +98,122 @@ adapter so that change stays local.
 
 ### The provider abstraction (§6)
 
-- [ ] `extension/src/providers/types.ts` — `ProviderId`, `ModelInfo`, `ModelClient`, and `ModelError`
+- [x] `extension/src/providers/types.ts` — `ProviderId`, `ModelInfo`, `ModelClient`, and `ModelError`
       with the `kind` union from §9.4 (`auth`, `forbidden`, `model_not_found`, `rate_limit`,
       `server`, `offline`, `truncated`, `declined`, `bad_request`, `no_key`)
-- [ ] `extension/src/providers/registry.ts` — key-prefix detection and adapter construction
-      - [ ] **`sk-ant-` before `sk-`**, with a unit test asserting an Anthropic key does not resolve
+- [x] `extension/src/providers/registry.ts` — key-prefix detection and adapter construction
+      - [x] **`sk-ant-` before `sk-`**, with a unit test asserting an Anthropic key does not resolve
             to OpenAI
-      - [ ] unrecognised prefix → rejected at key-set time, not stored
-      - [ ] this is the **only** file allowed to `switch` on provider
-- [ ] One adapter (`anthropic.ts` recommended), implementing `listModels`, `enhance`, `enhanceStream`
-      - [ ] Add its SDK to `extension/package.json`; confirm tsup bundles it (must not be `external`
+      - [x] unrecognised prefix → rejected at key-set time, not stored
+      - [x] this is the **only** file allowed to `switch` on provider
+- [x] One adapter (`anthropic.ts` recommended), implementing `listModels`, `enhance`, `enhanceStream`
+      - [x] Add its SDK to `extension/package.json`; confirm tsup bundles it (must not be `external`
             — a `.vsix` has no `node_modules`)
-      - [ ] System text in the provider's system slot, never concatenated into user text
-      - [ ] No sampling params (see above)
-      - [ ] Output budget sized for reasoning **plus** answer where the cap covers both
-      - [ ] `AbortSignal` threaded to the underlying request
-      - [ ] Prompt caching on the system block if the provider offers it — and nothing volatile
+      - [x] System text in the provider's system slot, never concatenated into user text
+      - [x] No sampling params (see above)
+      - [x] Output budget sized for reasoning **plus** answer where the cap covers both
+      - [x] `AbortSignal` threaded to the underlying request
+      - [x] Prompt caching on the system block if the provider offers it — and nothing volatile
             interpolated into that block, or caching silently stops
-      - [ ] **Select text parts explicitly and join** — never index content block zero; on
+      - [x] **Select text parts explicitly and join** — never index content block zero; on
             reasoning-capable models that's often internal reasoning
-      - [ ] Check the finish reason **before** using the content; map truncation and refusal to
+      - [x] Check the finish reason **before** using the content; map truncation and refusal to
             `ModelError`
-      - [ ] Never return text not confirmed to be answer content — on the editor path it goes
+      - [x] Never return text not confirmed to be answer content — on the editor path it goes
             straight into the user's file
 
 ### Key and model handling (§7)
 
-- [ ] `extension/src/services/SecretService.ts` — one key per provider
+- [x] `extension/src/services/SecretService.ts` — one key per provider
       (`promptEnhancer.apiKey.<provider>`), read per call, never cached in a module variable
-      - [ ] clients constructed per call from that key — never at module scope, never from
+      - [x] clients constructed per call from that key — never at module scope, never from
             `process.env`
-      - [ ] never touches `workspace.configuration`, workspace state, or `globalState`
-- [ ] Commands, **added to `extension/package.json` contributions in this phase**: "Set API Key"
+      - [x] never touches `workspace.configuration`, workspace state, or `globalState`
+- [x] Commands, **added to `extension/package.json` contributions in this phase**: "Set API Key"
       (`showInputBox` `password: true`, provider inferred from prefix), "Clear API Key",
       "Select Model"
-- [ ] Validate on set with one `listModels()` call — confirms the key *and* populates the model
+- [x] Validate on set with one `listModels()` call — confirms the key *and* populates the model
       quick-pick in the same request. Never store an invalid key silently
-- [ ] Model resolution order: `promptEnhancer.model` setting → stored per-provider choice →
+- [x] Model resolution order: `promptEnhancer.model` setting → stored per-provider choice →
       quick-pick on first use. Validate the setting **on use**, surfacing `model_not_found` with a
       Change Model action
-- [ ] No-key state treated as normal, not an error: message + "Set API Key" action
+- [x] No-key state treated as normal, not an error: message + "Set API Key" action
 
 ### Flow A (§8)
 
-- [ ] Rewrite `enhanceSelection` to replace the Phase 1 preview with the real call
-      - [ ] `withProgress` at `ProgressLocation.Notification`, cancellable; cancel aborts and leaves
+- [x] Rewrite `enhanceSelection` to replace the Phase 1 preview with the real call
+      - [x] `withProgress` at `ProgressLocation.Notification`, cancellable; cancel aborts and leaves
             the document untouched
-      - [ ] **Document-version guard** — capture `document.version` and the range up front; if the
+      - [x] **Document-version guard** — capture `document.version` and the range up front; if the
             document changed mid-flight, do not replace, open a preview instead (§8 Flow A.6)
-      - [ ] Single `editBuilder.replace()` on the original range so it is one undo step
-- [ ] Extract the shared orchestration (resolve client → validate → render → call → deliver) so
+      - [x] Single `editBuilder.replace()` on the original range so it is one undo step
+- [x] Extract the shared orchestration (resolve client → validate → render → call → deliver) so
       Phases 3 and 4 reuse it rather than duplicating it
 
 ### Errors (§9)
 
-- [ ] Map the adapter's failures to `ModelError.kind` by the SDK's **typed error classes**, never by
+- [x] Map the adapter's failures to `ModelError.kind` by the SDK's **typed error classes**, never by
       matching message strings
-- [ ] UI maps `kind` → message + action per the §9.4 table; every message names the provider or model
+- [x] UI maps `kind` → message + action per the §9.4 table; every message names the provider or model
       where relevant ("rate limit reached" without saying whose is a support ticket)
-- [ ] Do **not** wrap a retry loop around an SDK that already retries 429/5xx
+- [x] Do **not** wrap a retry loop around an SDK that already retries 429/5xx
 
 ### Tests
 
-- [ ] Key-prefix detection (incl. the `sk-ant-` ordering case), error mapping to `kind`,
+- [x] Key-prefix detection (incl. the `sk-ant-` ordering case), error mapping to `kind`,
       response-shape handling, cap enforcement, key redaction
 
 **Acceptance:** with a key set, selecting rough text and pressing the keybinding replaces it with a
 structured prompt in one undo step; every failure path leaves the buffer exactly as it was.
 
+### What shipped, beyond the list above
+
+- `extension/src/enhance/` holds the shared orchestration: `session.ts` (provider → key → client →
+  model), `runEnhance.ts` (validate → render → call), `deadline.ts` (the §9.5 30 s deadline, with
+  user cancellation and timeout kept distinguishable), `report.ts` (the §9.4 table).
+- `extension/src/services/ChoiceStore.ts` holds the non-secret remembered choices — model per
+  provider, and provider when several keys are stored — in `globalState`. The key/model split in §7
+  is why this is a separate class from `SecretService`: one of them may never touch `globalState`.
+- `promptEnhancer.model` is contributed as a setting (§6 resolution step 1).
+  `promptEnhancer.provider` is **not** — it belongs to Phase 3, where a second key makes it
+  meaningful. Until then the provider is prompt-once-and-remember via `ChoiceStore`.
+- **47 unit tests** in `extension` (`pnpm --filter prompt-enhancer test`), on top of the 6 in
+  `packages/prompts`. `vitest.config.ts` aliases the host-injected `vscode` module to
+  `extension/test/stubs/vscode.ts`.
+  - `anthropic.request.test.ts` stubs global `fetch` and asserts the **body actually sent**: no
+    `temperature`/`top_p`/`top_k`, `thinking: {type:'adaptive'}` with `output_config.effort: 'low'`,
+    the system text in the `system` slot with `cache_control` on it, and exactly one HTTP request
+    per call. Every one of those rules is invisible when reading the call site, which is why they
+    are asserted against the wire rather than reviewed.
+  - It also covers the stream path: `thinking_delta` events are filtered out and the terminal stop
+    reason is checked before the result counts as complete.
+- **Bundle size datapoint for §4:** `dist/extension.js` is **523 KB** with one SDK bundled, up from
+  13.5 KB in Phase 1. Phase 3 adds two more SDKs and is where this gets measured as a `.vsix` and
+  recorded properly. If it becomes a problem the fix is lazy `require()` per adapter, not dropping
+  a provider.
+
+### Open from Phase 2 — needs a live editor
+
+None of this can be verified from a coding session; all of it is unit-tested or type-checked as far
+as it can be without an extension host, and `@vscode/test-electron` coverage is Phase 5's job (§12).
+
+- [ ] **Happy path:** set a real Anthropic key, enhance a rough selection, confirm the replacement
+      lands in place and <kbd>Ctrl</kbd>+<kbd>Z</kbd> **once** restores the original text.
+- [ ] **Cancel mid-request** from the progress notification — buffer must be untouched, no error.
+- [ ] **Edit the document during the request** — must open a preview instead of replacing, and say so.
+- [ ] **No-key path:** clear the key, run the command, confirm the info message and that "Set API
+      Key" opens the input box.
+- [ ] **Bad key:** paste `sk-ant-` followed by junk — must report `auth` and store nothing (check
+      that a subsequent enhance still says no key).
+- [ ] **Unsupported prefix** (`AIza…`, `sk-proj-…`) — must be refused at key-set time, nothing stored.
+- [ ] **Bad model setting:** set `promptEnhancer.model` to a nonsense ID, enhance, confirm
+      `model_not_found` names the model and offers Select Model.
+- [ ] **Offline** (disable networking) — must report offline, not a generic failure.
+- [ ] **Output channel:** confirm diagnostics appear and no key ever does.
+
 ---
 
-## Phase 3 — The other two providers
+## Phase 3 — The other two providers ⬅ next
 
 - [ ] The remaining two adapters against the same interface. **Refactor `types.ts` if they expose a
       bad assumption** — that is expected, and cheaper than having guessed in Phase 2

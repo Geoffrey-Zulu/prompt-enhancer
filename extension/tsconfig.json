@@ -8,5 +8,8 @@
     "declaration": false,
     "declarationMap": false
   },
-  "include": ["src/**/*.ts", "tsup.config.ts"]
+  // vitest.config.ts is deliberately absent: it is ESM-native (`vitest/config`
+  // and `import.meta.url`) and cannot be typechecked under this package's
+  // Node16/CommonJS settings. Vitest type-strips it itself.
+  "include": ["src/**/*.ts", "test/**/*.ts", "tsup.config.ts"]
 }

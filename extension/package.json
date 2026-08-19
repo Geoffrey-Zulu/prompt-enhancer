@@ -10,8 +10,19 @@
     "vscode": "^1.90.0",
     "node": ">=20"
   },
-  "categories": ["Other", "AI", "Chat"],
-  "keywords": ["prompt", "prompt engineering", "ai", "gemini", "chat"],
+  "categories": [
+    "Other",
+    "AI",
+    "Chat"
+  ],
+  "keywords": [
+    "prompt",
+    "prompt engineering",
+    "ai",
+    "anthropic",
+    "claude",
+    "chat"
+  ],
   "main": "./dist/extension.js",
   "activationEvents": [],
   "contributes": {
@@ -19,6 +30,21 @@
       {
         "command": "promptEnhancer.enhanceSelection",
         "title": "Enhance Selection",
+        "category": "Prompt Enhancer"
+      },
+      {
+        "command": "promptEnhancer.setApiKey",
+        "title": "Set API Key",
+        "category": "Prompt Enhancer"
+      },
+      {
+        "command": "promptEnhancer.clearApiKey",
+        "title": "Clear API Key",
+        "category": "Prompt Enhancer"
+      },
+      {
+        "command": "promptEnhancer.selectModel",
+        "title": "Select Model",
         "category": "Prompt Enhancer"
       }
     ],
@@ -38,6 +64,16 @@
           "group": "1_modification@100"
         }
       ]
+    },
+    "configuration": {
+      "title": "Prompt Enhancer",
+      "properties": {
+        "promptEnhancer.model": {
+          "type": "string",
+          "default": "",
+          "markdownDescription": "Model ID to use, overriding the model chosen with your API key. Leave empty to use the model picked by **Prompt Enhancer: Select Model**. Validated when it is used, so a typo shows up as \"model not available\" rather than being ignored. No model ID is hardcoded in this extension — run **Select Model** to see the ones your key can use."
+        }
+      }
     }
   },
   "scripts": {
@@ -47,15 +83,18 @@
     "watch": "tsup --watch",
     "pretypecheck": "pnpm run deps",
     "typecheck": "tsc --noEmit",
-    "vscode:prepublish": "pnpm run build"
+    "vscode:prepublish": "pnpm run build",
+    "test": "vitest run"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.117.1",
     "@prompt-enhancer/prompts": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^20.16.11",
     "@types/vscode": "^1.90.0",
     "tsup": "^8.3.5",
-    "typescript": "^5.6.3"
+    "typescript": "^5.6.3",
+    "vitest": "^2.1.4"
   }
 }
