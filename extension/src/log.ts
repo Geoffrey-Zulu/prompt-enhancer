@@ -22,9 +22,17 @@ let channel: vscode.LogOutputChannel | undefined;
  */
 const KEY_PATTERNS: readonly RegExp[] = [
   /sk-ant-[A-Za-z0-9_-]{10,}/g, // Anthropic
-  /AIza[0-9A-Za-z_-]{10,}/g, // Google AI
+  /AQ\.[A-Za-z0-9_.-]{16,}/g, // Google AI authorization keys (what AI Studio issues now)
+  /AIza[0-9A-Za-z_-]{10,}/g, // Google AI standard keys (the format being retired)
   /sk-[A-Za-z0-9_-]{16,}/g, // OpenAI (incl. sk-proj-)
   /\bBearer\s+[A-Za-z0-9._~+/-]+=*/gi,
+  // Defence in depth, and the reason it is needed: a key whose prefix we do not
+  // recognise can now be stored (the user is asked which provider it belongs to),
+  // so the patterns above cannot be assumed to cover everything that is held.
+  // This catches a long opaque token next to a name that says what it is.
+  // The optional quote before the separator is what makes this work on JSON —
+  // `"token":"…"` puts a quote between the label and the colon.
+  /\b(api[-_]?key|apikey|key|token|secret|authorization)\b(?:["']?\s*[:=]\s*|\s+)["']?[A-Za-z0-9_.~+/-]{16,}={0,2}["']?/gi,
 ];
 
 export function redact(text: string): string {

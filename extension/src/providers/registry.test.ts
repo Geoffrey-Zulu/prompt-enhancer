@@ -4,7 +4,13 @@ import { SecretService } from '../services/SecretService.js';
 import { AnthropicClient } from './anthropic.js';
 import { GoogleClient } from './google.js';
 import { OpenAIClient } from './openai.js';
-import { ALL_PROVIDERS, createClient, detectProvider, isImplemented } from './registry.js';
+import {
+  ALL_PROVIDERS,
+  createClient,
+  detectProvider,
+  isImplemented,
+  looksLikeAnApiKey,
+} from './registry.js';
 
 describe('detectProvider', () => {
   it('resolves an Anthropic key to Anthropic, not OpenAI', () => {
@@ -24,9 +30,11 @@ describe('detectProvider', () => {
     expect(detectProvider('AIzaDDDDDDDDDDDDDDDDDDDDDDDDDDDD')).toBe('google');
   });
 
-  it('rejects a key shape it does not recognise rather than guessing', () => {
-    // Rejected at key-set time and never stored (§6) — a stored key that no
-    // adapter can use is a support ticket with no useful error.
+  it('returns undefined for a shape it does not know, meaning "ask" not "invalid"', () => {
+    // `detectProvider` is a fast path, not a gate. Google replacing its key
+    // format mid-project is the proof: a prefix table is exactly as durable as a
+    // hardcoded model ID. The caller asks the user rather than refusing, and the
+    // real gate is validating against the provider before storing (§7).
     expect(detectProvider('')).toBeUndefined();
     expect(detectProvider('   ')).toBeUndefined();
     expect(detectProvider('hunter2')).toBeUndefined();
@@ -37,6 +45,23 @@ describe('detectProvider', () => {
 
   it('tolerates whitespace around a pasted key', () => {
     expect(detectProvider('  sk-ant-api03-GGGGGGGGGGGGGGGG \n')).toBe('anthropic');
+  });
+});
+
+describe('looksLikeAnApiKey', () => {
+  it('catches a mis-paste without pretending to authenticate anything', () => {
+    // The only job here is to stop obvious junk before it costs a round trip.
+    expect(looksLikeAnApiKey('')).toBe(false);
+    expect(looksLikeAnApiKey('   ')).toBe(false);
+    expect(looksLikeAnApiKey('hunter2')).toBe(false);
+    expect(looksLikeAnApiKey('my key is somewhere in my email')).toBe(false);
+    expect(looksLikeAnApiKey('https://aistudio.google.com/apikey')).toBe(false);
+
+    // Anything key-shaped gets through, whatever its prefix — including a format
+    // that does not exist yet, which is the point.
+    expect(looksLikeAnApiKey('AQ.Ab8RN6EEEEEEEEEEEEEEEEEEEEEEEE')).toBe(true);
+    expect(looksLikeAnApiKey('sk-ant-api03-AAAAAAAAAAAAAAAA')).toBe(true);
+    expect(looksLikeAnApiKey('  xy-2027-format-nobody-has-seen-yet  ')).toBe(true);
   });
 });
 
@@ -59,12 +84,11 @@ describe('createClient', () => {
     expect(openai).toBeInstanceOf(OpenAIClient);
     expect(openai.provider).toBe('openai');
 
-    const google = createClient(
-      detectProvider('AIzaCCCCCCCCCCCCCCCCCCCC') ?? 'anthropic',
-      'AIzaCCCCCCCCCCCCCCCCCCCC',
-    );
-    expect(google).toBeInstanceOf(GoogleClient);
-    expect(google.provider).toBe('google');
+    for (const key of ['AIzaCCCCCCCCCCCCCCCCCCCC', 'AQ.Ab8RN6CCCCCCCCCCCCCCCCCC']) {
+      const google = createClient(detectProvider(key) ?? 'anthropic', key);
+      expect(google, key).toBeInstanceOf(GoogleClient);
+      expect(google.provider).toBe('google');
+    }
   });
 
   it('claims all three providers now that all three have an adapter', () => {

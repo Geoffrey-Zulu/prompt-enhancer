@@ -200,20 +200,40 @@ design failure.
 
 ### Which provider
 
-Detected from the key prefix, in `registry.ts`:
+Guessed from the key prefix, in `registry.ts`:
 
 | Prefix | Provider |
 |---|---|
 | `sk-ant-` | Anthropic |
-| `AIza` | Google AI |
+| `AQ.` | Google AI — the authorization-key format AI Studio issues now |
+| `AIza` | Google AI — the older standard-key format, being retired |
 | `sk-` (anything else beginning `sk-`) | OpenAI |
 
 **Order matters, and it is the one real trap here:** Anthropic keys also begin `sk-`, so `sk-ant-`
 must be tested **first**. Getting this backwards sends every Anthropic key to the OpenAI adapter,
 where it fails as a confusing 401 rather than an obvious bug. There is a unit test for exactly this.
 
-An unrecognised prefix is rejected at key-set time with "That doesn't look like a supported API key"
-rather than stored and left to fail later.
+**Prefix detection is a fast path, not a gate** — revised after the original design got this wrong.
+It read: *an unrecognised prefix is rejected at key-set time with "That doesn't look like a supported
+API key" rather than stored and left to fail later.* That rejected a working key. Google replaced its
+entire key format during this project's life: AI Studio now issues `AQ.` authorization keys and is
+retiring `AIza`, so a table containing only `AIza` refuses every Google key created today.
+
+The lesson is the one D9 already draws about model IDs — **a table of provider-specific strings is
+exactly as durable as a hardcoded model ID, and key prefixes churn for the same reasons.** So:
+
+- a recognised prefix routes the key with no questions asked;
+- an **unrecognised** prefix asks the user which provider it belongs to, saying that the format is
+  unfamiliar rather than implying the key is wrong;
+- input that is not key-shaped at all — too short, containing whitespace, or a URL, which is a real
+  mis-paste — is refused without asking.
+
+The guarantee the original rule was protecting is untouched, because it never depended on the prefix:
+**a key is validated against its provider with one `listModels()` call before it is stored** (§7). An
+invalid key is still never stored, whatever its shape.
+
+This also means the extension can hold a key whose shape the log's redaction patterns do not know, so
+§9.3 gains a pattern that strips a long opaque token next to a label saying what it is.
 
 ### Which model (D9)
 

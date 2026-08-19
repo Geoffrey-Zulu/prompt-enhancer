@@ -59,12 +59,14 @@ function target(provider: ProviderId): LiveTarget | undefined {
     return undefined;
   }
 
-  // Route the key the way the extension does, rather than trusting the env var
-  // name — this is also a live check of the §6 prefix detection.
+  // Cross-check the env var name against the prefix, but only where the prefix is
+  // one we know: `detectProvider` is a hint, not a gate (§6), so an unfamiliar
+  // format means "trust the variable it was put in", not "reject it". Insisting
+  // otherwise is the same mistake that rejected a working Google key.
   const detected = detectProvider(apiKey);
-  if (detected !== provider) {
+  if (detected !== undefined && detected !== provider) {
     throw new Error(
-      `${KEY_ENV[provider]} does not look like a ${provider} key (detected: ${String(detected)})`,
+      `${KEY_ENV[provider]} looks like a ${detected} key, not a ${provider} one`,
     );
   }
 
