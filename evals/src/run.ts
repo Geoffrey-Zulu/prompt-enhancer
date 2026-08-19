@@ -161,13 +161,12 @@ async function runLive(
   if (apiKey === undefined || apiKey.length === 0) {
     throw new Error(`${KEY_ENV[provider]} is not set`);
   }
-  // Route the key the way the extension does rather than trusting the env var
-  // name, so a key pasted into the wrong variable fails here and not as a 401.
+  // Cross-check the env var name against the prefix where the prefix is one we
+  // know. `detectProvider` is a hint, not a gate (§6) — an unfamiliar format means
+  // trust the variable it was put in.
   const detected = detectProvider(apiKey);
-  if (detected !== provider) {
-    throw new Error(
-      `${KEY_ENV[provider]} does not look like a ${provider} key (detected ${String(detected)})`,
-    );
+  if (detected !== undefined && detected !== provider) {
+    throw new Error(`${KEY_ENV[provider]} looks like a ${detected} key, not a ${provider} one`);
   }
 
   const client = createClient(provider, apiKey);

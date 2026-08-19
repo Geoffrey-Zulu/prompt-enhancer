@@ -64,6 +64,11 @@ Things worth knowing before you write any code:
   and several reasoning models elsewhere restrict them. Omitting them is correct everywhere.
 - **`sk-ant-` is checked before `sk-`.** Anthropic keys also start `sk-`, so the wrong order routes
   every Anthropic key to the OpenAI adapter and fails as a baffling 401. Same trap in log redaction.
+- **Key prefixes are a hint, not a gate** (§6, revised). Google replaced its whole key format mid
+  project — AI Studio issues `AQ.` now and is retiring `AIza` — and the original design rejected
+  anything it did not recognise, which refused a working key. An unknown shape asks the user which
+  provider it is for; validation against the provider is what actually gates storage. Do not turn the
+  prefix table back into a gate, and do add a new format to it when one appears.
 - **Contributions land with their implementation.** Don't declare a command or participant in
   `package.json` before the code that handles it exists.
 - **The document is never modified on failure** (§9.1) — including by writing an empty, truncated, or
@@ -287,6 +292,15 @@ unused SDK is parsed but never executed.
 Three optional native `require()`s (`bufferutil`, `utf-8-validate`, `supports-color`) survive in the
 bundle from `ws` and `debug`. All three sit inside `try` blocks in their own libraries, so they fail
 harmlessly in a `.vsix` that has no `node_modules`. Verified, not assumed.
+
+### Fixed after Phase 3 shipped
+
+- [x] **A working Google AI Studio key was rejected.** The prefix table only had `AIza`, and AI Studio
+      now issues `AQ.` authorization keys — `AIza` is the format Google is retiring, so *every* key a
+      new Google user creates was refused with "that doesn't look like a supported API key". Found by
+      the owner trying a real key, which is exactly the class of bug no amount of stubbed testing
+      reaches. Both prefixes are now recognised, redaction covers both shapes, and prefix detection is
+      a fast path rather than a gate — see tdd.md §6 for the revision and why.
 
 ### Open from Phase 3 — needs keys, or a live editor
 
