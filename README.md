@@ -4,9 +4,11 @@ A VS Code extension that turns rough notes into structured, context-rich prompts
 or in the chat panel.
 
 Design and build order live in [tdd.md](tdd.md); current state and what to do next are in
-[tasks.md](tasks.md). **All five phases are built.** What remains needs things a coding session
-cannot supply: API keys for OpenAI and Google AI to close Phase 3's acceptance bar and record the D10
-pass rates, and a Marketplace publisher ID to ship.
+[tasks.md](tasks.md). **All five phases are built, and rev 5 (D11) reworked the surfaces** — the
+primary flow is now a panel and an unconditional shortcut that hand the result over by clipboard,
+rather than an editor selection; the chat participant is withdrawn. What remains needs things a coding
+session cannot supply: API keys for OpenAI and Google AI to close Phase 3's acceptance bar and record
+the D10 pass rates, and a Marketplace publisher ID to ship.
 
 > The user-facing README — including the §13 privacy disclosure — is
 > [extension/README.md](extension/README.md), which is what ships in the `.vsix`. This file is

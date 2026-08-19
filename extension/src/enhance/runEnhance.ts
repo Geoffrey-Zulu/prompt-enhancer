@@ -11,8 +11,8 @@ import type { EnhanceSession } from './session.js';
 
 /**
  * The shared orchestration: validate → render → call (TDD §8). Only delivery
- * differs between the editor path and the chat path, so only delivery lives in
- * the callers.
+ * differs between the three surfaces — the quick-input flow, the panel, and the
+ * editor rewrite — so only delivery lives in the callers.
  *
  * This function never touches a document. That is what makes the §9.1
  * guarantee cheap to keep: a caller cannot apply a result it has not received.

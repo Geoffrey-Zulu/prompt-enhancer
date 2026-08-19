@@ -16,10 +16,11 @@ import {
  * Raw HTTP bodies and stack traces go to the output channel and never to the
  * user (§9.7); the channel redacts keys unconditionally (§9.3).
  *
- * `describeFailure` is the §9.4 table and the only place it exists. Flow A
- * renders it as a notification (`reportFailure`) and Flow B renders it into the
- * chat stream (`chat/streamReporter.ts`) — two renderers, one table, because
- * two copies of a message table drift and only one of them gets updated.
+ * `describeFailure` is the §9.4 table and the only place it exists. The command
+ * flows render it as a notification (`reportFailure`); the panel renders it
+ * inline (`view/panel.ts`), because a toast behind the panel is a message the
+ * user may never see. Two renderers, one table — two copies of a message table
+ * drift, and only one of them gets updated.
  *
  * The UI knows `ModelError.kind` and nothing about any provider's error
  * taxonomy; that mapping is each adapter's job.
@@ -219,9 +220,8 @@ export async function reportFailure(
 }
 
 /**
- * Reports a failure. Flow A passes `reportFailure`; Flow B passes a reporter
- * that writes into the chat stream instead (§8 Flow B.4), so a missing key is
- * reported where the user is looking rather than as a notification behind the
- * panel.
+ * Reports a failure. The command flows pass `reportFailure`; the panel passes a
+ * reporter that writes into its own status line instead, so a missing key is
+ * reported where the user is looking rather than behind the panel.
  */
 export type Reporter = (error: unknown, context?: FailureContext) => Promise<void>;

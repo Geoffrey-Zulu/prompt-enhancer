@@ -26,14 +26,43 @@
   "main": "./dist/extension.js",
   "activationEvents": [
     "onCommand:promptEnhancer.insertResult",
-    "onCommand:promptEnhancer.copyResult",
-    "onCommand:promptEnhancer.runFailureAction"
+    "onCommand:promptEnhancer.copyResult"
   ],
   "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "promptEnhancer",
+          "title": "Prompt Enhancer",
+          "icon": "media/icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "promptEnhancer": [
+        {
+          "type": "webview",
+          "id": "promptEnhancer.panel",
+          "name": "Enhance a prompt",
+          "icon": "media/icon.svg",
+          "contextualTitle": "Prompt Enhancer"
+        }
+      ]
+    },
     "commands": [
       {
+        "command": "promptEnhancer.enhancePrompt",
+        "title": "Enhance a Prompt…",
+        "category": "Prompt Enhancer"
+      },
+      {
+        "command": "promptEnhancer.openPanel",
+        "title": "Open Panel",
+        "category": "Prompt Enhancer"
+      },
+      {
         "command": "promptEnhancer.enhanceSelection",
-        "title": "Enhance Selection",
+        "title": "Enhance Selection (rewrite in place)",
         "category": "Prompt Enhancer"
       },
       {
@@ -52,35 +81,11 @@
         "category": "Prompt Enhancer"
       }
     ],
-    "chatParticipants": [
-      {
-        "id": "prompt-enhancer.enhance",
-        "name": "enhance",
-        "fullName": "Prompt Enhancer",
-        "description": "Turn a rough note into a structured prompt",
-        "isSticky": true,
-        "commands": [
-          {
-            "name": "code",
-            "description": "A prompt that yields working code"
-          },
-          {
-            "name": "architecture",
-            "description": "A prompt that yields a design, not an implementation"
-          },
-          {
-            "name": "refactor",
-            "description": "A prompt that yields a behaviour-preserving change"
-          }
-        ]
-      }
-    ],
     "keybindings": [
       {
-        "command": "promptEnhancer.enhanceSelection",
+        "command": "promptEnhancer.enhancePrompt",
         "key": "ctrl+alt+e",
-        "mac": "cmd+alt+e",
-        "when": "editorTextFocus && editorHasSelection"
+        "mac": "cmd+alt+e"
       }
     ],
     "menus": {
@@ -95,6 +100,21 @@
     "configuration": {
       "title": "Prompt Enhancer",
       "properties": {
+        "promptEnhancer.defaultMode": {
+          "type": "string",
+          "enum": [
+            "code",
+            "architecture",
+            "refactor"
+          ],
+          "enumDescriptions": [
+            "Push for a prompt that yields working code.",
+            "Push for a prompt that yields a design, not an implementation.",
+            "Push for a prompt that yields a behaviour-preserving change."
+          ],
+          "default": "code",
+          "markdownDescription": "Mode used by **Enhance a Prompt…** and the editor command. The panel has its own picker."
+        },
         "promptEnhancer.provider": {
           "type": "string",
           "enum": [

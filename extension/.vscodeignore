@@ -13,6 +13,7 @@ integration/**
 .vscode/**
 **/*.ts
 !dist/**/*.d.ts
+!media/**
 **/*.map
 **/tsconfig*.json
 tsup.config.ts

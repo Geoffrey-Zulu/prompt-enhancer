@@ -3,8 +3,8 @@
 Working task list for the build order in [tdd.md](tdd.md) §11. Read the TDD first; this file
 tracks state, not design. Section references below (§) point at the TDD.
 
-**Current state:** Phase 5 complete except the parts that need keys or a publisher account, on
-`feature/phase-5-evals-ci`. Remote is `github.com/Geoffrey-Zulu/prompt-enhancer`; `dev` is the
+**Current state:** rev 5 (D11) reworked the surfaces — see *Rev 5* below. Phase 5 is otherwise
+complete except the parts needing keys or a publisher account. Remote is `github.com/Geoffrey-Zulu/prompt-enhancer`; `dev` is the
 default branch and holds Phases 1–4; `main` holds the baseline only.
 **Next up:** nothing is blocked on code. See *Owner-only / external steps*.
 
@@ -76,6 +76,42 @@ Things worth knowing before you write any code:
 - **Never log or message an API key.** All logging goes through `extension/src/log.ts`, which
   redacts at the boundary (§9.3).
 - **There is no backend.** If a task seems to need one, it belongs in v2 (§14).
+
+---
+
+## Rev 5 — the surfaces were wrong (D11)
+
+Found by the owner opening the extension and asking the obvious question: *a file contains code, not a
+prompt — what am I enhancing?* He was right, and it was worse than one misplaced feature.
+
+- **The editor selection was the headline.** Enhancing a selection in a `.tsx` file means enhancing a
+  component. The moment a prompt is actually written is in a chat box, and nothing served it.
+- **The chat participant was invisible to him.** `chatParticipants` registers into VS Code's *native*
+  chat panel, which GitHub Copilot Chat provides. He runs `anthropic.claude-code` and `openai.chatgpt`
+  — neither hosts another extension's participant — so all of Phase 4 was dead code on his machine,
+  silently.
+- **The keybinding was gated on `editorHasSelection`**, so `ctrl+alt+e` did nothing, with no message,
+  almost everywhere. That is why it looked broken.
+
+What changed:
+
+- [x] **A panel** (`extension/src/view/panel.ts`) in the activity bar: paste a rough prompt, pick a
+      mode, watch it stream in, edit it, and it is on the clipboard when it finishes. This is the
+      extension's home now.
+- [x] **A quick-input flow** (`promptEnhancer.enhancePrompt`) on an **unconditional** `ctrl+alt+e`,
+      usable with a chat panel focused. Result to clipboard plus a preview tab.
+- [x] **The chat participant is removed** — contribution, handler, stream renderer and its tests.
+      `enhanceStream` survives because the panel streams, which is what keeps D8's streaming half
+      meaningful.
+- [x] **Editor selection kept but demoted:** context menu and palette, no default keybinding, and the
+      README says plainly it is for files that contain prompts rather than for code.
+- [x] The undo-step integration test was flaky (`executeCommand('undo')` resolves before the document
+      model catches up). It polls now. The most important assertion in the suite does not get to be
+      flaky.
+
+**The clipboard is the bridge, and it has to be.** No extension can read or write another extension's
+chat input — those panels are private webviews with no API. "Select it in the chat and press a key" is
+not buildable by anyone, so every surface here ends by copying.
 
 ---
 

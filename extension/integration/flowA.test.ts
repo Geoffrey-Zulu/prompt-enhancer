@@ -61,6 +61,29 @@ async function closeEverything(): Promise<void> {
   await vscode.commands.executeCommand('workbench.action.closeAllEditors');
 }
 
+/**
+ * Polls until `predicate` holds, or gives up.
+ *
+ * `executeCommand('undo')` resolves when the command has been *dispatched*, not
+ * when the document model reflects it, so asserting immediately after it is a
+ * race — one that passes almost always and fails just often enough to teach
+ * people to re-run the suite. The single-undo-step guarantee is the most
+ * important thing this file asserts; it does not get to be flaky.
+ */
+async function waitFor(
+  predicate: () => boolean,
+  what: string,
+  timeoutMs = 5_000,
+): Promise<void> {
+  const deadline = Date.now() + timeoutMs;
+  while (!predicate()) {
+    if (Date.now() > deadline) {
+      throw new Error(`timed out after ${timeoutMs}ms waiting for ${what}`);
+    }
+    await new Promise((resolve) => setTimeout(resolve, 25));
+  }
+}
+
 suite('Flow A — delivery to the editor', () => {
   suiteSetup(async () => {
     // Activated explicitly so the suite does not depend on the order mocha
@@ -91,6 +114,10 @@ suite('Flow A — delivery to the editor', () => {
     assert.equal(eol(fixture.document.getText()), ENHANCED);
 
     await vscode.commands.executeCommand('undo');
+    await waitFor(
+      () => eol(fixture.document.getText()) !== ENHANCED,
+      'the undo to reach the document',
+    );
 
     assert.equal(
       eol(fixture.document.getText()),
@@ -137,6 +164,10 @@ suite('Flow A — delivery to the editor', () => {
       builder.insert(fixture.document.positionAt(0), 'x');
     });
     await vscode.commands.executeCommand('undo');
+    await waitFor(
+      () => eol(fixture.document.getText()) === ROUGH,
+      'the undo to reach the document',
+    );
 
     assert.equal(eol(fixture.document.getText()), ROUGH, 'text is back to the original');
     assert.equal(documentMoved(target), true, 'but the version moved, so it counts as moved');
