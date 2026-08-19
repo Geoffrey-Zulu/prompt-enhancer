@@ -9,7 +9,7 @@ import {
 } from './index.js';
 
 describe('renderEnhancePrompt', () => {
-  it('is deterministic — editor, chat, and evals must agree byte for byte', () => {
+  it('is deterministic- editor, chat, and evals must agree byte for byte', () => {
     const input = { roughText: 'make the login form validate email', mode: 'code' as const };
     expect(renderEnhancePrompt(input)).toEqual(renderEnhancePrompt(input));
   });

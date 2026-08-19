@@ -3,8 +3,8 @@
  * `vitest.config.ts`.
  *
  * The unit suite covers the parts of the extension that must be right before
- * any editor is involved — key-prefix detection, error mapping, response
- * parsing, cap enforcement, redaction — and those modules only ever import
+ * any editor is involved- key-prefix detection, error mapping, response
+ * parsing, cap enforcement, redaction- and those modules only ever import
  * `vscode` transitively. This stub exists so importing them does not fail; the
  * behaviour that genuinely needs a live editor is the
  * `@vscode/test-electron` suite's job (§12).

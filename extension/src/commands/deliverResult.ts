@@ -3,7 +3,7 @@ import * as vscode from 'vscode';
 import { log } from '../log.js';
 
 /**
- * The two follow-up actions the chat participant offers (§8 Flow B.6).
+ * The two delivery actions the panel offers.
  *
  * Both are registered in code and deliberately **not** contributed to
  * `package.json`: each takes the text as an argument, so a command-palette entry
@@ -13,9 +13,10 @@ import { log } from '../log.js';
 
 /**
  * Inserts the enhanced prompt at the cursor, or over the selection if there is
- * one. Unlike Flow A this is not a rewrite the user might not be expecting — they
- * clicked a button — so there is no document-version guard to keep: the target is
- * wherever the cursor is *now*, which is what "insert into editor" means.
+ * one. Unlike the editor rewrite this is not a change the user might not be
+ * expecting- they clicked a button- so there is no document-version guard to
+ * keep: the target is wherever the cursor is *now*, which is what "insert into
+ * editor" means.
  */
 export async function insertResult(text?: unknown): Promise<void> {
   if (typeof text !== 'string' || text.trim().length === 0) {

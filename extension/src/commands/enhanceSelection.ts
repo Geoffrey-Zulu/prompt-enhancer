@@ -8,7 +8,7 @@ import { resolveSession } from '../enhance/session.js';
 import type { Services } from '../services/index.js';
 
 /**
- * Flow A — editor enhancement, in place (TDD §8).
+ * Flow A- editor enhancement, in place (TDD §8).
  *
  * The rule this file exists to keep is §9.1: **a failed enhancement never
  * modifies the document.** The only write lives in
@@ -28,7 +28,7 @@ export async function enhanceSelection(services: Services): Promise<void> {
     return;
   }
 
-  // §8 A.2 — capture the range, the document version and the language up front.
+  // §8 A.2- capture the range, the document version and the language up front.
   // Everything after this compares against these, not against whatever the
   // editor happens to look like when the call comes back.
   const document = editor.document;
@@ -55,7 +55,7 @@ export async function enhanceSelection(services: Services): Promise<void> {
     return;
   }
 
-  // §8 A.4 — no key at all is reported with a "Set API Key" action and stops
+  // §8 A.4- no key at all is reported with a "Set API Key" action and stops
   // here; a key with no model resolved asks, then continues.
   const session = await resolveSession(services);
   if (session === undefined) {
@@ -91,7 +91,7 @@ export async function enhanceSelection(services: Services): Promise<void> {
     );
   } catch (error) {
     // §9.1: nothing has been written, and nothing will be. A cancellation is
-    // reported as nothing at all — the document is simply left alone.
+    // reported as nothing at all- the document is simply left alone.
     await reportFailure(error, {
       provider: session.provider,
       model: session.model,

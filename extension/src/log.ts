@@ -13,7 +13,7 @@ let channel: vscode.LogOutputChannel | undefined;
 
 /**
  * One pattern per supported provider key shape (TDD §7). Anthropic's `sk-ant-`
- * is listed before the general `sk-` so the more specific match wins — the same
+ * is listed before the general `sk-` so the more specific match wins- the same
  * ordering trap as provider detection in `providers/registry.ts`.
  *
  * Adding a provider means adding its shape here. `extension/src/log.test.ts`
@@ -30,7 +30,7 @@ const KEY_PATTERNS: readonly RegExp[] = [
   // recognise can now be stored (the user is asked which provider it belongs to),
   // so the patterns above cannot be assumed to cover everything that is held.
   // This catches a long opaque token next to a name that says what it is.
-  // The optional quote before the separator is what makes this work on JSON —
+  // The optional quote before the separator is what makes this work on JSON-
   // `"token":"…"` puts a quote between the label and the colon.
   /\b(api[-_]?key|apikey|key|token|secret|authorization)\b(?:["']?\s*[:=]\s*|\s+)["']?[A-Za-z0-9_.~+/-]{16,}={0,2}["']?/gi,
 ];
@@ -54,7 +54,7 @@ export const log = {
   },
   error(message: string, error?: unknown): void {
     const detail = error instanceof Error ? `${error.name}: ${error.message}` : String(error ?? '');
-    channel?.error(redact(detail.length > 0 ? `${message} — ${detail}` : message));
+    channel?.error(redact(detail.length > 0 ? `${message}- ${detail}` : message));
   },
   show(): void {
     channel?.show(true);

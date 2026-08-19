@@ -24,20 +24,20 @@ const PROVIDER = 'openai' as const;
 /**
  * Larger than the Anthropic adapter's budget on purpose. This adapter does not
  * cap reasoning effort (see the note in `enhance`), so a reasoning model may
- * spend a good deal of this cap before it writes anything — and hitting the cap
+ * spend a good deal of this cap before it writes anything- and hitting the cap
  * is a `truncated` failure, not a shorter answer.
  */
 const MAX_OUTPUT_TOKENS = 32_000;
 
 /**
- * `GET /v1/models` returns every model on the key — embeddings, speech, image,
- * moderation — with **no capability information** to filter on (the `Model`
+ * `GET /v1/models` returns every model on the key- embeddings, speech, image,
+ * moderation- with **no capability information** to filter on (the `Model`
  * object is `id`, `created`, `owned_by`). Listing all of it puts image and audio
  * models in a prompt-enhancer's model picker.
  *
  * So this excludes non-text *modality families*, which is not a D9 violation:
- * it names no model, supplies no default, and — being an exclusion rather than
- * an allow-list — a newly released text model appears without a code change
+ * it names no model, supplies no default, and- being an exclusion rather than
+ * an allow-list- a newly released text model appears without a code change
  * instead of being silently hidden. That direction is the whole point.
  */
 const NON_TEXT_MODEL_MARKERS: readonly string[] = [
@@ -95,7 +95,7 @@ export class OpenAIClient implements ModelClient {
           max_output_tokens: MAX_OUTPUT_TOKENS,
           // Deliberately no `reasoning: {effort}`. The model list this adapter
           // offers includes non-reasoning models, and sending `reasoning` to one
-          // of those is a 400 — so the user's model choice would decide whether
+          // of those is a 400- so the user's model choice would decide whether
           // the extension worked. Omitting it leaves each model on its own
           // default, which for a reasoning model means reasoning stays on: the
           // safe setting §6 asks for.
@@ -239,7 +239,7 @@ function assertUsableStatus(
 /**
  * Maps the SDK's **typed error classes** onto `ModelError.kind` (§9.4). The
  * OpenAI SDK's error hierarchy mirrors Anthropic's, so this reads almost
- * identically — which is the abstraction working, not duplication to remove:
+ * identically- which is the abstraction working, not duplication to remove:
  * each adapter owns its provider's taxonomy.
  *
  * Exported for unit tests.
@@ -279,7 +279,7 @@ export function toModelError(error: unknown, context: { model?: string }): unkno
     return new ModelError('server', { ...base, detail: error.message, cause: error });
   }
 
-  // Already one of ours, or a genuine surprise — passed through unchanged
+  // Already one of ours, or a genuine surprise- passed through unchanged
   // rather than relabelled as a provider failure.
   return error;
 }

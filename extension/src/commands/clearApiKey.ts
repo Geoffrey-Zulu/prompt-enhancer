@@ -5,7 +5,7 @@ import { PROVIDER_LABELS, type ProviderId } from '../providers/types.js';
 import type { Services } from '../services/index.js';
 
 /**
- * "Prompt Enhancer: Clear API Key" (TDD §7) — quick-pick which provider, or
+ * "Prompt Enhancer: Clear API Key" (TDD §7)- quick-pick which provider, or
  * all. Clearing removes the key and forgets the model chosen with it; the
  * extension then prompts on next use rather than failing obscurely.
  */

@@ -72,7 +72,7 @@ describe('reportFailure', () => {
   it('resolves without waiting for the notification to be dismissed', async () => {
     // A notification carrying a button does not settle until the user clicks it
     // or it times out. Awaiting that here meant the command never finished, so
-    // `executeCommand` hung — which is how the integration suite found this, with
+    // `executeCommand` hung- which is how the integration suite found this, with
     // a 30 s mocha timeout on a headless runner.
     let settle: ((value: undefined) => void) | undefined;
     const never = new Promise<undefined>((resolve) => {

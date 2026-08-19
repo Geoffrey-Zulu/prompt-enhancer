@@ -3,14 +3,14 @@ import * as vscode from 'vscode';
 import { log } from '../log.js';
 
 /**
- * §8 Flow A.6 — the one place in this extension that writes to a user's
+ * §8 Flow A.6- the one place in this extension that writes to a user's
  * document.
  *
  * It lives in its own module because it is the code the §9.1 guarantee is about,
  * and because that guarantee is only worth anything if it is tested against a
  * real editor. `extension/integration/flowA.test.ts` calls `applyEnhancement`
- * directly in a live VS Code instance — asserting the replace is a single undo
- * step, and that a document which moved under us is not written to at all —
+ * directly in a live VS Code instance- asserting the replace is a single undo
+ * step, and that a document which moved under us is not written to at all-
  * neither of which can be checked with a stubbed `vscode` module.
  */
 
@@ -36,7 +36,7 @@ export type DeliveryOutcome =
  *
  * The version check is the load-bearing half: if the user edited during the
  * request, the captured range no longer means what it meant, and replacing on it
- * would corrupt the buffer. The text comparison is belt and braces — a version
+ * would corrupt the buffer. The text comparison is belt and braces- a version
  * bump with identical text (an edit then an undo) is still treated as moved,
  * which is the conservative direction.
  */
@@ -61,14 +61,14 @@ export async function applyEnhancement(
   enhanced: string,
 ): Promise<DeliveryOutcome> {
   if (enhanced.trim().length === 0) {
-    // Should be unreachable — both the adapter and `runEnhance` reject empty
-    // text — which is exactly why it is worth refusing here too. The cost of
+    // Should be unreachable- both the adapter and `runEnhance` reject empty
+    // text- which is exactly why it is worth refusing here too. The cost of
     // being wrong is the user's selection.
     throw new Error('refusing to write an empty enhancement over a selection');
   }
 
   if (documentMoved(target)) {
-    log.warn('document changed during the request — showing a preview instead of replacing');
+    log.warn('document changed during the request- showing a preview instead of replacing');
     await showPreview(enhanced);
     return 'preview-document-changed';
   }
@@ -82,9 +82,9 @@ export async function applyEnhancement(
   );
 
   if (!applied) {
-    // VS Code refused the edit — e.g. the editor is no longer visible. The rule
+    // VS Code refused the edit- e.g. the editor is no longer visible. The rule
     // holds: the document is not half-written, and the work is not lost.
-    log.warn('editor.edit returned false — showing a preview instead of replacing');
+    log.warn('editor.edit returned false- showing a preview instead of replacing');
     await showPreview(enhanced);
     return 'preview-edit-refused';
   }

@@ -1,11 +1,11 @@
 {
   "name": "prompt-enhancer",
   "displayName": "Prompt Enhancer",
-  "description": "Turn rough notes into structured, context-rich prompts — in the editor or in chat.",
-  "version": "0.0.1",
+  "description": "Turn a rough thought into a prompt worth sending. Bring your own Anthropic, OpenAI or Google AI key.",
+  "version": "0.1.0",
   "private": true,
-  "license": "UNLICENSED",
-  "publisher": "TBD",
+  "license": "MIT",
+  "publisher": "REPLACE-WITH-YOUR-PUBLISHER-ID",
   "engines": {
     "vscode": "^1.90.0",
     "node": ">=20"
@@ -13,7 +13,8 @@
   "categories": [
     "Other",
     "AI",
-    "Chat"
+    "Chat",
+    "Education"
   ],
   "keywords": [
     "prompt",
@@ -21,19 +22,51 @@
     "ai",
     "anthropic",
     "claude",
-    "chat"
+    "openai",
+    "chatgpt",
+    "gemini",
+    "llm"
   ],
   "main": "./dist/extension.js",
   "activationEvents": [
     "onCommand:promptEnhancer.insertResult",
-    "onCommand:promptEnhancer.copyResult",
-    "onCommand:promptEnhancer.runFailureAction"
+    "onCommand:promptEnhancer.copyResult"
   ],
   "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "promptEnhancer",
+          "title": "Prompt Enhancer",
+          "icon": "media/icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "promptEnhancer": [
+        {
+          "type": "webview",
+          "id": "promptEnhancer.panel",
+          "name": "Enhance a prompt",
+          "icon": "media/icon.svg",
+          "contextualTitle": "Prompt Enhancer"
+        }
+      ]
+    },
     "commands": [
       {
+        "command": "promptEnhancer.enhancePrompt",
+        "title": "Enhance a Prompt…",
+        "category": "Prompt Enhancer"
+      },
+      {
+        "command": "promptEnhancer.openPanel",
+        "title": "Open Panel",
+        "category": "Prompt Enhancer"
+      },
+      {
         "command": "promptEnhancer.enhanceSelection",
-        "title": "Enhance Selection",
+        "title": "Enhance Selection (rewrite in place)",
         "category": "Prompt Enhancer"
       },
       {
@@ -52,35 +85,11 @@
         "category": "Prompt Enhancer"
       }
     ],
-    "chatParticipants": [
-      {
-        "id": "prompt-enhancer.enhance",
-        "name": "enhance",
-        "fullName": "Prompt Enhancer",
-        "description": "Turn a rough note into a structured prompt",
-        "isSticky": true,
-        "commands": [
-          {
-            "name": "code",
-            "description": "A prompt that yields working code"
-          },
-          {
-            "name": "architecture",
-            "description": "A prompt that yields a design, not an implementation"
-          },
-          {
-            "name": "refactor",
-            "description": "A prompt that yields a behaviour-preserving change"
-          }
-        ]
-      }
-    ],
     "keybindings": [
       {
-        "command": "promptEnhancer.enhanceSelection",
+        "command": "promptEnhancer.enhancePrompt",
         "key": "ctrl+alt+e",
-        "mac": "cmd+alt+e",
-        "when": "editorTextFocus && editorHasSelection"
+        "mac": "cmd+alt+e"
       }
     ],
     "menus": {
@@ -95,6 +104,21 @@
     "configuration": {
       "title": "Prompt Enhancer",
       "properties": {
+        "promptEnhancer.defaultMode": {
+          "type": "string",
+          "enum": [
+            "code",
+            "architecture",
+            "refactor"
+          ],
+          "enumDescriptions": [
+            "Push for a prompt that yields working code.",
+            "Push for a prompt that yields a design, not an implementation.",
+            "Push for a prompt that yields a behaviour-preserving change."
+          ],
+          "default": "code",
+          "markdownDescription": "Mode used by **Enhance a Prompt…** and the editor command. The panel has its own picker."
+        },
         "promptEnhancer.provider": {
           "type": "string",
           "enum": [
@@ -110,12 +134,12 @@
             "Use the stored Google AI key."
           ],
           "default": "",
-          "markdownDescription": "Which provider to use when you have more than one API key stored. Ignored when only one key is stored, and ignored if it names a provider you have no key for — the key you actually have is a better answer than an error. Leave empty to be asked once and have the choice remembered."
+          "markdownDescription": "Which provider to use when you have more than one API key stored. Ignored when only one key is stored, and ignored if it names a provider you have no key for- the key you actually have is a better answer than an error. Leave empty to be asked once and have the choice remembered."
         },
         "promptEnhancer.model": {
           "type": "string",
           "default": "",
-          "markdownDescription": "Model ID to use, overriding the model chosen with your API key. Leave empty to use the model picked by **Prompt Enhancer: Select Model**. Validated when it is used, so a typo shows up as \"model not available\" rather than being ignored. No model ID is hardcoded in this extension — run **Select Model** to see the ones your key can use."
+          "markdownDescription": "Model ID to use, overriding the model chosen with your API key. Leave empty to use the model picked by **Prompt Enhancer: Select Model**. Validated when it is used, so a typo shows up as \"model not available\" rather than being ignored. No model ID is hardcoded in this extension- run **Select Model** to see the ones your key can use."
         }
       }
     }
@@ -154,5 +178,13 @@
     "tsup": "^8.3.5",
     "typescript": "^5.6.3",
     "vitest": "^2.1.4"
-  }
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Geoffrey-Zulu/prompt-enhancer.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Geoffrey-Zulu/prompt-enhancer/issues"
+  },
+  "homepage": "https://github.com/Geoffrey-Zulu/prompt-enhancer#readme"
 }

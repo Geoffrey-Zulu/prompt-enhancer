@@ -1,14 +1,16 @@
 # Prompt Enhancer
 
-A VS Code extension that turns rough notes into structured, context-rich prompts — in the editor
+A VS Code extension that turns rough notes into structured, context-rich prompts- in the editor
 or in the chat panel.
 
 Design and build order live in [tdd.md](tdd.md); current state and what to do next are in
-[tasks.md](tasks.md). **All five phases are built.** What remains needs things a coding session
-cannot supply: API keys for OpenAI and Google AI to close Phase 3's acceptance bar and record the D10
-pass rates, and a Marketplace publisher ID to ship.
+[tasks.md](tasks.md). **All five phases are built, and rev 5 (D11) reworked the surfaces**- the
+primary flow is now a panel and an unconditional shortcut that hand the result over by clipboard,
+rather than an editor selection; the chat participant is withdrawn. What remains needs things a coding
+session cannot supply: API keys for OpenAI and Google AI to close Phase 3's acceptance bar and record
+the D10 pass rates, and a Marketplace publisher ID to ship.
 
-> The user-facing README — including the §13 privacy disclosure — is
+> The user-facing README- including the §13 privacy disclosure- is
 > [extension/README.md](extension/README.md), which is what ships in the `.vsix`. This file is
 > developer setup only.
 
@@ -16,13 +18,13 @@ pass rates, and a Marketplace publisher ID to ship.
 
 | Path | What it is |
 |---|---|
-| `extension/` | the VS Code extension — the publishable artifact |
+| `extension/` | the VS Code extension- the publishable artifact |
 | `packages/prompts/` | the enhancement prompt, single source of truth (TDD D3) |
-| `evals/` | the §10 golden set and runner — needs a real key, so it is run deliberately |
+| `evals/` | the §10 golden set and runner- needs a real key, so it is run deliberately |
 
 The extension is BYOK-only and provider-agnostic by design: supply an **Anthropic, OpenAI, or
 Google AI** key and it calls that provider directly. The provider follows from the key's prefix, and
-the model is discovered from the provider rather than hardcoded — so a newly released model works
+the model is discovered from the provider rather than hardcoded- so a newly released model works
 without an extension update. There is no backend, no account, and no sign-in. See TDD D1 for why the
 cloud proxy was cut, D2 for the provider set, and D9 for model discovery.
 
@@ -31,7 +33,7 @@ with more than one stored, `promptEnhancer.provider` picks between them and othe
 once and the answer remembered.
 
 **Only the Anthropic path has been exercised against a live API.** Every rule each adapter must
-follow is unit-tested against a stubbed `fetch` — which proves what goes on the wire and how the
+follow is unit-tested against a stubbed `fetch`- which proves what goes on the wire and how the
 response is read, not that the provider returns 200. See "Open from Phase 3" in
 [tasks.md](tasks.md).
 
@@ -66,7 +68,7 @@ key-prefix detection, the request body actually sent to each provider, response 
 handling, input caps, and key redaction. It aliases the host-injected `vscode` module to a stub; the
 editor behaviour itself needs the `@vscode/test-electron` suite, which arrives in Phase 5 (TDD §12).
 
-The `*.request.test.ts` suites replace global `fetch` and assert the real outgoing request — no
+The `*.request.test.ts` suites replace global `fetch` and assert the real outgoing request- no
 sampling parameters, the system text in the provider's own system slot, reasoning left enabled, and
 reasoning never read back as answer text. Those rules are invisible when reading a call site, so they
 are asserted against the wire rather than reviewed.
@@ -87,7 +89,7 @@ It names any provider it could not cover and fails on a partial run.
 pnpm --filter prompt-enhancer test:integration
 ```
 
-Downloads a real VS Code and runs 17 tests inside it — the single-undo-step replace, the
+Downloads a real VS Code and runs 17 tests inside it- the single-undo-step replace, the
 document-changed guard, the empty-result refusal, the chat delivery commands, and the contributions
 matching their handlers. These are the §9.1 promises about someone's file, and a stubbed `vscode`
 module can only confirm which API we called, not what the editor then did.
@@ -108,7 +110,7 @@ scoring change can be re-checked without re-spending.
 Press <kbd>F5</kbd> (the **Run Extension** launch config) to open an Extension Development Host.
 In that window:
 
-1. Run **Prompt Enhancer: Set API Key** and paste an Anthropic, OpenAI, or Google AI key — the
+1. Run **Prompt Enhancer: Set API Key** and paste an Anthropic, OpenAI, or Google AI key- the
    provider follows from the key's prefix. It is validated with one models-list call before it is
    stored, and the same call populates the model quick-pick.
 2. Select some rough text in any file and press <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>E</kbd>
@@ -116,7 +118,7 @@ In that window:
    Selection** from the command palette.
 
 The selection is replaced in place, as a single undo step. If the request fails, is cancelled, or
-the document changed while it was running, the buffer is left exactly as it was — see TDD §9.1.
+the document changed while it was running, the buffer is left exactly as it was- see TDD §9.1.
 **Prompt Enhancer: Select Model** changes the model and **Clear API Key** removes a key.
 Diagnostics go to the **Prompt Enhancer** output channel, which redacts every supported key shape.
 
@@ -126,13 +128,13 @@ provider and model that answered, and ends with **Insert into editor** and **Cop
 
 ## Editing the prompt
 
-`packages/prompts/templates/enhance.v1.md` is the only place prompt text is authored. It is
+`packages/prompts/templates/enhance.v2.md` is the only place prompt text is authored. It is
 inlined into `src/generated/template.ts` at build time (not committed). Changing it in a way that
-alters behaviour means bumping `TEMPLATE_VERSION` — see TDD §5.
+alters behaviour means bumping `TEMPLATE_VERSION`- see TDD §5.
 
 ## Branching
 
-Three tiers, and `dev` is the one you work from — see tdd.md §13 for the reasoning.
+Three tiers, and `dev` is the one you work from- see tdd.md §13 for the reasoning.
 
 | Branch | What it holds |
 |---|---|

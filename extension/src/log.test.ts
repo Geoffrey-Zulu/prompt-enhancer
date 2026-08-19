@@ -5,7 +5,7 @@ import { redact } from './log.js';
 /**
  * §7 / §9.3: every supported key shape is stripped at the logging boundary, so
  * forgetting to redact at a call site is not possible. Adding a provider means
- * adding its pattern to `log.ts` — and this test is what fails if it is
+ * adding its pattern to `log.ts`- and this test is what fails if it is
  * forgotten, instead of a key appearing in someone's output channel.
  */
 describe('redact', () => {
@@ -41,7 +41,7 @@ describe('redact', () => {
 
   it('strips an unfamiliar token that is labelled as a key', () => {
     // Defence in depth. A key whose prefix we do not recognise can now be stored
-    // — the user is asked which provider it belongs to — so the shape-specific
+    //- the user is asked which provider it belongs to- so the shape-specific
     // patterns above cannot be assumed to cover everything the extension holds.
     const unknown = 'zzz9QQQ7Lm2Rw8Xv1Nc6Bh3Jd7Fs0Gy5Pa';
     for (const line of [
@@ -55,7 +55,7 @@ describe('redact', () => {
   });
 
   it('leaves ordinary diagnostics alone', () => {
-    const line = 'enhancing 412 chars via anthropic/some-model-id (enhance.v1, mode code)';
+    const line = 'enhancing 412 chars via anthropic/some-model-id (enhance.v2, mode code)';
     expect(redact(line)).toBe(line);
   });
 });

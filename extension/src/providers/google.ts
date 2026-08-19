@@ -23,7 +23,7 @@ import {
  *   user's file (§6 reading rule 2).
  * - **There is one error class, not a hierarchy.** `ApiError` carries a numeric
  *   `status`, so the §9.4 mapping switches on that. That is still structured
- *   data off a typed error, not a message-string match — the thing §9.4 forbids.
+ *   data off a typed error, not a message-string match- the thing §9.4 forbids.
  *
  * **No model ID appears here** (D9).
  */
@@ -104,7 +104,7 @@ export class GoogleClient implements ModelClient {
           //
           // No `thinkingConfig` either: the model's own default is the safe
           // setting §6 asks for, and pinning a thinking budget here would be the
-          // same mistake as pinning a model ID — the right number differs per
+          // same mistake as pinning a model ID- the right number differs per
           // model and changes with each release. `includeThoughts` defaults to
           // false, so thoughts are not returned; the reader filters them anyway.
           //
@@ -166,7 +166,7 @@ function stripModelPrefix(name: string): string {
 }
 
 /**
- * The answer text parts of the first candidate — **thinking parts excluded**.
+ * The answer text parts of the first candidate- **thinking parts excluded**.
  *
  * This is the §6 reading rule that matters most on this provider: a thought is
  * a text part with `thought: true`, so a reader that just concatenates every
@@ -188,7 +188,7 @@ export function answerParts(response: GenerateContentResponse): string[] {
  * The §6 "reading the response" contract. Exported for unit tests.
  */
 export function readAnswerText(response: GenerateContentResponse, model: string): string {
-  // Rule 3: check the finish reason **before** using the content — including
+  // Rule 3: check the finish reason **before** using the content- including
   // the prompt-level block, which comes back with no candidate at all.
   assertUsableFinish(response, model);
 
@@ -248,8 +248,8 @@ function assertUsableFinish(response: GenerateContentResponse, model: string): v
 /**
  * Maps failures onto `ModelError.kind` (§9.4).
  *
- * Unlike the other two SDKs there is no class per status — `ApiError` carries a
- * numeric `status` — so the switch is on that. Still structured data off a typed
+ * Unlike the other two SDKs there is no class per status- `ApiError` carries a
+ * numeric `status`- so the switch is on that. Still structured data off a typed
  * error rather than a message-string match.
  *
  * Exported for unit tests.
@@ -291,7 +291,7 @@ export function toModelError(error: unknown, context: { model?: string }): unkno
     }
   }
 
-  // A transport failure never reaches `ApiError` — it comes out of `fetch`.
+  // A transport failure never reaches `ApiError`- it comes out of `fetch`.
   if (error instanceof TypeError) {
     return new ModelError('offline', { ...base, detail: error.message, cause: error });
   }

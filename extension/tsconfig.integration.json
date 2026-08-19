@@ -15,7 +15,7 @@
     "sourceMap": true
   },
   // Only the entry points are listed: tsc follows the imports from here, so the
-  // reachable parts of src/ come along and the rest — including the adapters,
-  // one of whose SDKs has no CommonJS type declarations — stays out of it.
+  // reachable parts of src/ come along and the rest- including the adapters,
+  // one of whose SDKs has no CommonJS type declarations- stays out of it.
   "include": ["integration/**/*.ts"]
 }

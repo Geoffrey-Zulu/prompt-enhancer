@@ -11,7 +11,7 @@ import {
 } from './types.js';
 
 /**
- * The Anthropic adapter (TDD §6). It normalises; it does not leak — nothing
+ * The Anthropic adapter (TDD §6). It normalises; it does not leak- nothing
  * outside this file knows the Anthropic wire format, its stop reasons, or its
  * error classes.
  *
@@ -37,7 +37,7 @@ export class AnthropicClient implements ModelClient {
   private readonly sdk: Anthropic;
 
   /**
-   * Constructed per call from a key read per call (§7) — never at module
+   * Constructed per call from a key read per call (§7)- never at module
    * scope, and never from `process.env`, so a key in the developer's
    * environment cannot silently stand in for the user's.
    */
@@ -46,7 +46,7 @@ export class AnthropicClient implements ModelClient {
       apiKey,
       timeout: REQUEST_TIMEOUT_MS,
       // The SDK already retries 429 and 5xx with backoff. Wrapping a second
-      // retry layer around it is explicitly wrong (§9.4) — an error reaching
+      // retry layer around it is explicitly wrong (§9.4)- an error reaching
       // the caller means retries are exhausted.
     });
   }
@@ -69,7 +69,7 @@ export class AnthropicClient implements ModelClient {
           max_tokens: MAX_OUTPUT_TOKENS,
           // System text goes in the provider's system slot, never concatenated
           // into the user text (§6). Prompt caching sits on this block only,
-          // and nothing volatile is interpolated into it — the rendered system
+          // and nothing volatile is interpolated into it- the rendered system
           // text is byte-identical across enhancements in the same mode, or
           // caching would silently stop.
           system: [{ type: 'text', text: prompt.system, cache_control: { type: 'ephemeral' } }],
@@ -111,7 +111,7 @@ export class AnthropicClient implements ModelClient {
 
     try {
       for await (const event of stream) {
-        // Text deltas only — thinking deltas and every other event are
+        // Text deltas only- thinking deltas and every other event are
         // filtered out here, so no reasoning can reach the consumer (§6).
         if (event.type === 'content_block_delta' && event.delta.type === 'text_delta') {
           yield event.delta.text;
@@ -119,7 +119,7 @@ export class AnthropicClient implements ModelClient {
       }
       // The terminal stop reason is checked before the consumer may treat the
       // result as complete (§6). Deltas already yielded are the consumer's to
-      // discard — which is one reason the editor path does not stream (D8).
+      // discard- which is one reason the editor path does not stream (D8).
       assertUsableStopReason(await stream.finalMessage(), model);
     } catch (error) {
       throw toModelError(error, { model });
@@ -181,7 +181,7 @@ function assertUsableStopReason(
         detail: `stop_reason ${message.stop_reason}`,
       });
     default:
-      // `tool_use` and `pause_turn` cannot happen — no tools are declared —
+      // `tool_use` and `pause_turn` cannot happen- no tools are declared-
       // and a completed non-streaming message always carries a stop reason.
       // Anything else is our bug, so it fails rather than being trusted.
       throw new ModelError('bad_request', {
@@ -195,7 +195,7 @@ function assertUsableStopReason(
 /**
  * Maps the SDK's **typed error classes** onto `ModelError.kind` (§9.4). Never
  * matches on message strings, and never puts a raw HTTP body in front of the
- * user — `detail` goes to the output channel only (§9.7).
+ * user- `detail` goes to the output channel only (§9.7).
  *
  * Exported for unit tests.
  */
@@ -236,7 +236,7 @@ export function toModelError(error: unknown, context: { model?: string }): unkno
   }
 
   // Already one of ours (a stop-reason or empty-text failure raised above), or
-  // something genuinely unexpected — either way it passes through unchanged
+  // something genuinely unexpected- either way it passes through unchanged
   // rather than being relabelled as a provider failure.
   return error;
 }

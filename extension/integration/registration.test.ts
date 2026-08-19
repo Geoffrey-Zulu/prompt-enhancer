@@ -9,10 +9,26 @@ import * as vscode from 'vscode';
  * an activation that throws and leaves everything silently dead.
  */
 
-const EXTENSION_ID = 'TBD.prompt-enhancer';
+/**
+ * Found by package name rather than by `<publisher>.<name>`.
+ *
+ * The publisher changes: it was `TBD`, it is a placeholder until the Marketplace
+ * account exists, and it becomes the real id after that. A test that hardcodes it
+ * fails on a metadata edit that broke nothing, which is exactly the kind of
+ * false alarm that gets suites ignored.
+ */
+function findExtension(): vscode.Extension<unknown> {
+  const found = vscode.extensions.all.find(
+    (candidate) => (candidate.packageJSON as { name?: string }).name === 'prompt-enhancer',
+  );
+  assert.ok(found, 'the prompt-enhancer extension is not loaded');
+  return found;
+}
 
 /** Contributed to the palette, so each one needs a declaration *and* a handler. */
 const PALETTE_COMMANDS = [
+  'promptEnhancer.enhancePrompt',
+  'promptEnhancer.openPanel',
   'promptEnhancer.enhanceSelection',
   'promptEnhancer.setApiKey',
   'promptEnhancer.clearApiKey',
@@ -20,23 +36,18 @@ const PALETTE_COMMANDS = [
 ];
 
 /** Registered in code only: each takes an argument, so a palette entry would be broken. */
-const INTERNAL_COMMANDS = [
-  'promptEnhancer.insertResult',
-  'promptEnhancer.copyResult',
-  'promptEnhancer.runFailureAction',
-];
+const INTERNAL_COMMANDS = ['promptEnhancer.insertResult', 'promptEnhancer.copyResult'];
 
 suite('activation and contributions', () => {
   test('the extension is present and activates', async () => {
-    const extension = vscode.extensions.getExtension(EXTENSION_ID);
-    assert.ok(extension, `extension ${EXTENSION_ID} not found`);
+    const extension = findExtension();
 
     await extension.activate();
     assert.equal(extension.isActive, true);
   });
 
   test('every command it contributes has a handler', async () => {
-    await vscode.extensions.getExtension(EXTENSION_ID)?.activate();
+    await findExtension().activate();
     const registered = new Set(await vscode.commands.getCommands(true));
 
     for (const command of [...PALETTE_COMMANDS, ...INTERNAL_COMMANDS]) {
@@ -48,8 +59,7 @@ suite('activation and contributions', () => {
     // A declaration with no handler is a palette entry that errors when clicked;
     // a handler with no declaration is a feature nobody can find. The
     // contribution rule in §11 is about exactly this pair.
-    const extension = vscode.extensions.getExtension(EXTENSION_ID);
-    assert.ok(extension);
+    const extension = findExtension();
 
     const contributed = (
       extension.packageJSON as { contributes?: { commands?: Array<{ command: string }> } }
@@ -58,26 +68,38 @@ suite('activation and contributions', () => {
     assert.deepEqual([...(contributed ?? [])].sort(), [...PALETTE_COMMANDS].sort());
   });
 
-  test('the chat participant id matches the contribution exactly', () => {
-    // §8 Flow B.2: a mismatch here is a participant that silently never fires,
-    // with no error anywhere.
-    const extension = vscode.extensions.getExtension(EXTENSION_ID);
-    assert.ok(extension);
+  test('the panel view id matches the provider registration exactly', () => {
+    // A mismatch here is a view that renders nothing, with no error anywhere-
+    // the same class of failure the removed chat participant had.
+    const extension = findExtension();
 
-    const participants = (
+    const views = (
       extension.packageJSON as {
-        contributes?: { chatParticipants?: Array<{ id: string; name: string }> };
+        contributes?: { views?: Record<string, Array<{ id: string; type?: string }>> };
       }
-    ).contributes?.chatParticipants;
+    ).contributes?.views?.['promptEnhancer'];
 
-    assert.equal(participants?.length, 1);
-    assert.equal(participants?.[0]?.id, 'prompt-enhancer.enhance');
-    assert.equal(participants?.[0]?.name, 'enhance');
+    assert.equal(views?.length, 1);
+    assert.equal(views?.[0]?.id, 'promptEnhancer.panel');
+    assert.equal(views?.[0]?.type, 'webview');
+  });
+
+  test('it contributes no chat participant', () => {
+    // Removed deliberately: `chatParticipants` registers into VS Code's native
+    // chat panel, which only exists with GitHub Copilot Chat installed. Users on
+    // Claude Code or ChatGPT saw nothing at all, with no way to find out why.
+    const extension = findExtension();
+
+    assert.equal(
+      (extension.packageJSON as { contributes?: Record<string, unknown> }).contributes?.[
+        'chatParticipants'
+      ],
+      undefined,
+    );
   });
 
   test('the keybinding is the D7 one, gated on a selection', () => {
-    const extension = vscode.extensions.getExtension(EXTENSION_ID);
-    assert.ok(extension);
+    const extension = findExtension();
 
     const keybindings = (
       extension.packageJSON as {
@@ -85,12 +107,14 @@ suite('activation and contributions', () => {
       }
     ).contributes?.keybindings;
 
-    const binding = keybindings?.find(
-      (entry) => entry.command === 'promptEnhancer.enhanceSelection',
-    );
+    const binding = keybindings?.find((entry) => entry.command === 'promptEnhancer.enhancePrompt');
     // D7: ctrl+shift+e is Focus Explorer on every platform and must not be taken.
     assert.equal(binding?.key, 'ctrl+alt+e');
-    assert.ok(binding?.when.includes('editorHasSelection'));
+    // Deliberately unconditional. The shortcut belongs to the flow that works
+    // wherever you are- including with a chat panel focused, which is where a
+    // prompt is actually being written. Gating it on `editorHasSelection` is what
+    // made it feel broken: it did nothing, silently, almost everywhere.
+    assert.equal(binding?.when, undefined);
   });
 });
 

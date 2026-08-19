@@ -10,7 +10,7 @@ import { ModelError } from './types.js';
  * inspect is the body that would actually go on the wire.
  *
  * They exist because the §6 request rules are all invisible in a code review of
- * the call site — a stray `temperature`, a disabled `thinking`, or a system
+ * the call site- a stray `temperature`, a disabled `thinking`, or a system
  * prompt folded into the user turn all look perfectly reasonable.
  */
 
@@ -88,7 +88,7 @@ function client(): AnthropicClient {
   return new AnthropicClient('sk-ant-not-a-real-key');
 }
 
-describe('AnthropicClient.enhance — the request', () => {
+describe('AnthropicClient.enhance- the request', () => {
   it('sends no sampling parameters at all', async () => {
     await client().enhance(PROMPT, MODEL);
 
@@ -128,13 +128,13 @@ describe('AnthropicClient.enhance — the request', () => {
     expect(captured[0]?.body['max_tokens']).toBeGreaterThanOrEqual(16_000);
   });
 
-  it('makes exactly one request — no retry layer of ours wraps the SDK', async () => {
+  it('makes exactly one request- no retry layer of ours wraps the SDK', async () => {
     await client().enhance(PROMPT, MODEL);
     expect(captured).toHaveLength(1);
   });
 });
 
-describe('AnthropicClient.enhance — the response', () => {
+describe('AnthropicClient.enhance- the response', () => {
   it('returns the answer text and never the reasoning that precedes it', async () => {
     const result = await client().enhance(PROMPT, MODEL);
 
@@ -173,7 +173,7 @@ describe('AnthropicClient.enhance — the response', () => {
 
   it('threads a cancellation signal down to the request', async () => {
     // §6 wants cancellation real rather than cosmetic, so the assertion is that
-    // a signal reaches `fetch` — not merely that something rejected.
+    // a signal reaches `fetch`- not merely that something rejected.
     await client().enhance(PROMPT, MODEL, new AbortController().signal);
 
     expect(captured[0]?.signal).toBeDefined();

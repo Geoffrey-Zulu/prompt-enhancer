@@ -3,9 +3,9 @@
  *
  * The single source of truth for the enhancement prompt (TDD D3).
  *
- * All three consumers — the editor command, the chat participant, and the eval
- * runner — import `renderEnhancePrompt` from here, so the template text exists
- * in exactly one authored file: `templates/enhance.v1.md`.
+ * All three consumers- the editor command, the chat participant, and the eval
+ * runner- import `renderEnhancePrompt` from here, so the template text exists
+ * in exactly one authored file: `templates/enhance.v2.md`.
  *
  * The template is inlined at build time by `scripts/generate.mjs` into
  * `src/generated/template.ts`, which also carries its sha256. Nothing reads
@@ -21,9 +21,9 @@ export { TEMPLATE_SHA256 };
  * (TDD §5, §10). There is no version negotiation to worry about: the template
  * and the code that uses it ship together in one .vsix.
  */
-export const TEMPLATE_VERSION = 'enhance.v1';
+export const TEMPLATE_VERSION = 'enhance.v2';
 
-/** Closed enum — unknown modes are rejected before any network call. */
+/** Closed enum- unknown modes are rejected before any network call. */
 export const ENHANCE_MODES = ['code', 'architecture', 'refactor'] as const;
 export type EnhanceMode = (typeof ENHANCE_MODES)[number];
 
@@ -108,7 +108,7 @@ function fill(template: string, values: Readonly<Record<string, string>>): strin
 /**
  * Renders the enhancement prompt. Pure and deterministic: the same input
  * always produces byte-identical output, so the editor command, the chat
- * participant, and the eval runner cannot disagree about what was sent — which
+ * participant, and the eval runner cannot disagree about what was sent- which
  * is what makes a golden result meaningful.
  */
 export function renderEnhancePrompt(input: EnhanceInput): RenderedPrompt {

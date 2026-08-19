@@ -10,7 +10,7 @@ import type { ProviderId } from '../providers/types.js';
  *
  * - **`SecretStorage` only.** A key never touches `workspace.configuration`,
  *   workspace state, or `globalState`. Settings sync and workspace files are
- *   the two places a key must not end up — which is also why
+ *   the two places a key must not end up- which is also why
  *   `promptEnhancer.model` can be a setting and the key never can.
  * - **One key per provider**, so a user with several keeps them all and
  *   switching provider does not mean re-pasting.

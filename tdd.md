@@ -1,7 +1,7 @@
 # Technical Design Document: Prompt Enhancer VS Code Extension
 
 **Status:** approved for build
-**Last revised:** 2026-08-19 (rev 4 — multi-provider)
+**Last revised:** 2026-08-19 (rev 4- multi-provider)
 **History:** initial draft `59d2899`; rev 1 (design review) `be9ab11`; rev 2 (proxy cut) `cfef000`;
 rev 3 (Anthropic) `e80135d`
 
@@ -11,8 +11,8 @@ rev 3 (Anthropic) `e80135d`
 
 **Name:** Prompt Enhancer
 
-**Goal:** A VS Code extension that takes rough, unstructured text — a selection in the editor or a
-chat message — runs it through an LLM, and returns a structured, context-rich prompt. In the
+**Goal:** A VS Code extension that takes rough, unstructured text- a selection in the editor or a
+chat message- runs it through an LLM, and returns a structured, context-rich prompt. In the
 editor the rough text is replaced in place; in chat the result is streamed into the panel.
 
 **Core features**
@@ -21,7 +21,7 @@ editor the rough text is replaced in place; in chat the result is streamed into 
 - **Chat participant:** `@enhance` handles requests in the VS Code native chat panel.
 - **BYOK, and only BYOK:** the user supplies their own API key for **Anthropic, OpenAI, or Google
   AI**, stored in VS Code `SecretStorage`. The extension calls that provider directly. There is
-  **no account, no sign-in, and no server** — see §2 D1.
+  **no account, no sign-in, and no server**- see §2 D1.
 - **Provider and model are the user's choice**, not the extension's: the provider follows from the
   key, and the model is discovered from the provider rather than hardcoded (D2, D9).
 
@@ -36,22 +36,29 @@ Settled. Changing one is a design change, not an implementation choice.
 
 | # | Decision | Rationale |
 |---|---|---|
-| D1 | **BYOK only in v1. No backend at all.** | A proxy on the author's API key needs some notion of who is calling, or it is an open endpoint billing the author for strangers. Everything that machinery cost — anonymous auth, per-caller quota, spend caps, kill switch, a Firebase project, two build phases — bought one thing: a user with no key. That user is better served by `vscode.lm` (D6) than by a bill. Cut. |
-| D2 | **Three providers in v1: Anthropic, OpenAI, and Google AI**, each an adapter behind one `ModelClient` interface (§6). | The task is the simplest thing an LLM does — system prompt plus user text in, text out — so no provider has a structural advantage and the adapter surface is genuinely small. Earlier revisions pinned one provider (Gemini in rev 1 because the cut backend was Genkit; Anthropic in rev 3); with BYOK and no server, that constraint bought nothing the user wanted. The real cost is eval surface, not code — see D10. |
+| D1 | **BYOK only in v1. No backend at all.** | A proxy on the author's API key needs some notion of who is calling, or it is an open endpoint billing the author for strangers. Everything that machinery cost- anonymous auth, per-caller quota, spend caps, kill switch, a Firebase project, two build phases- bought one thing: a user with no key. That user is better served by `vscode.lm` (D6) than by a bill. Cut. |
+| D2 | **Three providers in v1: Anthropic, OpenAI, and Google AI**, each an adapter behind one `ModelClient` interface (§6). | The task is the simplest thing an LLM does- system prompt plus user text in, text out- so no provider has a structural advantage and the adapter surface is genuinely small. Earlier revisions pinned one provider (Gemini in rev 1 because the cut backend was Genkit; Anthropic in rev 3); with BYOK and no server, that constraint bought nothing the user wanted. The real cost is eval surface, not code- see D10. |
 | D3 | **The prompt template is a single authored file** in a shared workspace package. | Consumed by the extension and by the eval runner (§10), and it keeps the prompt independently testable. Prompt text never lives in TypeScript. |
-| D6 | **`vscode.lm` (Copilot-backed) is the v2 answer for users without a key.** | Zero cost to the author, no auth, no abuse surface — strictly better than a proxy. Requires the user to have a chat model provider, which is why it is not the v1 default. |
-| D7 | **Keybinding default is `ctrl+alt+e` / `cmd+alt+e`**, gated on `editorHasSelection`. | `ctrl+shift+e` is Focus Explorer on every platform and must not be overridden. |
-| D8 | **Editor path is non-streaming; chat path streams plain text.** | Validated output and token streaming are mutually exclusive. Each flow gets the one that fits. |
-| D9 | **Model IDs are discovered at runtime, never hardcoded.** Each adapter exposes a `listModels()` and the extension picks from it; a `promptEnhancer.model` setting overrides. | Provider model IDs churn faster than extension releases — OpenAI's and Google's both moved more than once during this document's life. A hardcoded default is a guaranteed future support ticket. Discovery reuses the models-list call that key validation already needs, so it costs one request, not a new mechanism. |
-| D10 | **The prompt template is tuned and evaluated against one primary provider; the others are supported, not guaranteed identical.** | One template across three models means it is tuned for whichever was tested. The §10 structural criteria are generic enough to mostly transfer, but "mostly" is doing real work — so goldens record which provider and model produced them, and a provider that fails the regression rule is documented, not silently shipped. |
+| D6 | **`vscode.lm` (Copilot-backed) is the v2 answer for users without a key.** | Zero cost to the author, no auth, no abuse surface- strictly better than a proxy. Requires the user to have a chat model provider, which is why it is not the v1 default. |
+| D7 | **Keybinding default is `ctrl+alt+e` / `cmd+alt+e`.** ~~Gated on `editorHasSelection`.~~ **Revised (rev 5):** unconditional, and bound to the quick-input flow rather than the editor rewrite. | `ctrl+shift+e` is Focus Explorer on every platform and must not be overridden. The gate was the mistake: a shortcut that does nothing, silently, everywhere except an editor with a selection reads as broken- and a prompt is not usually being written in an editor at all (D11). |
+| D8 | **The in-place editor rewrite is non-streaming; the panel streams plain text.** ~~chat path~~- the chat participant is withdrawn (D11), and the panel inherits streaming. | Validated output and token streaming are mutually exclusive, so the surface that writes into a user's file waits for a complete, checked response, and the surface that only displays text shows it as it arrives. |
+| D9 | **Model IDs are discovered at runtime, never hardcoded.** Each adapter exposes a `listModels()` and the extension picks from it; a `promptEnhancer.model` setting overrides. | Provider model IDs churn faster than extension releases- OpenAI's and Google's both moved more than once during this document's life. A hardcoded default is a guaranteed future support ticket. Discovery reuses the models-list call that key validation already needs, so it costs one request, not a new mechanism. |
+| D10 | **The prompt template is tuned and evaluated against one primary provider; the others are supported, not guaranteed identical.** | One template across three models means it is tuned for whichever was tested. The §10 structural criteria are generic enough to mostly transfer, but "mostly" is doing real work- so goldens record which provider and model produced them, and a provider that fails the regression rule is documented, not silently shipped. |
+
+| D11 | **The primary surface is a prompt-first one- a panel and a quick input- not an editor selection, and there is no chat participant.** | The original design had no good answer to *where a prompt lives*. It put the headline feature on an editor selection, which means enhancing code: a `.tsx` file contains a component, not a prompt, and "enhance this selection" there answers a question nobody asked. The second surface was a `chatParticipants` contribution, which registers into VS Code's **native** chat panel- provided by GitHub Copilot Chat. A user running Claude Code or the ChatGPT extension has no native panel, so `@enhance` was invisible to them with no way to find out why. Both surfaces missed the actual moment of use. **A prompt is written in a chat box**, so the extension now offers a panel and an unconditional shortcut, and hands the result over by clipboard. Editor selection stays, demoted, for files that really do contain prompts (`CLAUDE.md`, instruction files, system-prompt strings). |
 
 D4 and D5 covered the proxy's prompt-relay defence and its anonymous-auth identity. Both are
 withdrawn with the proxy; the numbering is left with gaps so older commits and reviews still
 reference the right decisions.
 
+**On reaching into another chat's input:** the obvious wish- select what you typed in Claude Code's
+or ChatGPT's box and press a key- is not implementable. Those panels are webviews owned by their
+extensions, and VS Code exposes no API to read or replace their contents. The clipboard is the only
+bridge that works across every chat, which is why every surface here ends by copying.
+
 **On sign-in generally:** no version of this extension has ever required a user to log in. The
 withdrawn anonymous auth was invisible per-install attribution for the proxy's quota, not a
-sign-in screen. With the proxy gone the question is moot — the user pastes a key and that is the
+sign-in screen. With the proxy gone the question is moot- the user pastes a key and that is the
 entire setup.
 
 ---
@@ -80,7 +87,7 @@ prompt-enhancer/
 │   └── tsup.config.ts
 ├── packages/
 │   └── prompts/            # D3: single source of truth
-│       ├── templates/enhance.v1.md
+│       ├── templates/enhance.v2.md
 │       ├── src/index.ts        # template text, version, sha256, mode enum, renderer
 │       └── package.json
 ├── evals/goldens.jsonl     # §10 quality bar
@@ -97,13 +104,13 @@ as a v2 workstream, not as a stub carried in the meantime.
 
 - **Language:** TypeScript, strict mode.
 - **Runtime:** Node.js (VS Code extension host).
-- **Engine:** `"engines": { "vscode": "^1.90.0" }` — the version that stabilised both the Chat
+- **Engine:** `"engines": { "vscode": "^1.90.0" }`- the version that stabilised both the Chat
   participant API and `vscode.lm`.
 - **Build:** `tsup`, CJS output, `external: ['vscode']`, `platform: 'node'`. The `vscode` module is
   host-injected and must never be bundled; the workspace prompts package and the provider SDKs are
   bundled in, since a `.vsix` has no `node_modules`.
-- **Runtime dependencies:** the three official SDKs — `@anthropic-ai/sdk`, `openai`, and Google's
-  Gen AI SDK — and nothing else. Each handles auth headers, streaming SSE parsing, retries, and
+- **Runtime dependencies:** the three official SDKs- `@anthropic-ai/sdk`, `openai`, and Google's
+  Gen AI SDK- and nothing else. Each handles auth headers, streaming SSE parsing, retries, and
   typed errors; hand-rolling that three times against three moving APIs is the larger risk.
 - **Bundle size is a real cost of D2**, and the measurement is in: **the `.vsix` is 451 KB** from a
   2.6 MB bundle (Phase 3, all three SDKs, sourcemap excluded from the package). Composition:
@@ -116,7 +123,7 @@ as a v2 workstream, not as a stub carried in the meantime.
   | this extension + the prompts package | 48 KB |
 
   The Google SDK is ~3.5× the Anthropic one, almost entirely in code this extension never calls:
-  Vertex AI service-account auth and the Live API's WebSocket stack. **No action taken** — 451 KB is
+  Vertex AI service-account auth and the Live API's WebSocket stack. **No action taken**- 451 KB is
   unremarkable for a Marketplace extension, and esbuild already wraps each module in a lazy
   initialiser, so an unused SDK is parsed but never executed. If it ever does matter, the mitigation
   stays the one named here: lazy `require()` per adapter, not dropping a provider.
@@ -135,7 +142,7 @@ no cost borne by the author.
 export const ENHANCE_MODES = ['code', 'architecture', 'refactor'] as const;
 export type EnhanceMode = typeof ENHANCE_MODES[number];
 
-export const TEMPLATE_VERSION = 'enhance.v1';
+export const TEMPLATE_VERSION = 'enhance.v2';
 export const TEMPLATE_SHA256  = '<computed at build time>';
 
 export function renderEnhancePrompt(input: {
@@ -145,24 +152,33 @@ export function renderEnhancePrompt(input: {
 }): { system: string; user: string };
 ```
 
-The template is authored as markdown in `templates/enhance.v1.md`, split into `<!-- SYSTEM -->`,
-`<!-- USER -->`, and one `<!-- MODE:x -->` section per mode, so all prompt *text* — including the
-per-mode guidance — lives in that one file and none of it is embedded in TypeScript.
+The template is authored as markdown in `templates/enhance.v2.md`, split into `<!-- SYSTEM -->`,
+`<!-- USER -->`, and one `<!-- MODE:x -->` section per mode, so all prompt *text*- including the
+per-mode guidance- lives in that one file and none of it is embedded in TypeScript.
 `scripts/generate.mjs` inlines it into `src/generated/template.ts` at build time along with its
 sha256, so nothing reads from disk at runtime and the template ships correctly inside the `.vsix`.
 The generated file is not committed.
 
 This package owns prompt text and nothing else. **Provider and model configuration deliberately do
-not live here** — they are not a prompt concern, and putting them here would make the eval runner
+not live here**- they are not a prompt concern, and putting them here would make the eval runner
 and the extension disagree about who chooses a model. The registry lives in
 `extension/src/providers/`, and the eval runner takes `--provider` / `--model` flags.
 
-- Both entry points — the editor command and the chat participant — call `renderEnhancePrompt`.
+- Both entry points- the editor command and the chat participant- call `renderEnhancePrompt`.
   The eval runner (§10) is the third consumer and the reason the sha256 is worth recording: a
   golden run is reported against the exact template bytes it tested.
-- Changing the template in a way that alters behaviour means bumping `TEMPLATE_VERSION`
-  (`enhance.v2`) and re-running the goldens. With no server there is no version negotiation — the
-  template and the code that uses it ship together in one `.vsix`.
+- Changing the template in a way that alters behaviour means bumping `TEMPLATE_VERSION` and
+  re-running the goldens. With no server there is no version negotiation- the template and the
+  code that uses it ship together in one `.vsix`.
+- **`enhance.v2` exists because of one change: who the unspecified-details list is written for.**
+  v1 collected missing decisions under `## Unspecified` and asked the *user* to fill them in
+  before prompting. That is homework, and it is homework aimed at the wrong person: the prompt is
+  usually handed to an assistant that can read the codebase, so "which framework is this?" is a
+  question it should answer by looking. v2 keeps the list - dropping it makes the model invent a
+  framework instead, which is strictly worse - but writes it as instructions to the assistant,
+  caps it at three items, and requires it to be omitted when nothing genuinely blocks.
+  (A punctuation-only sweep replacing em dashes with hyphens also moved the sha256; that alone
+  would not have justified a bump, since it alters no behaviour.)
 - `ENHANCE_MODES` is a closed enum. Unknown values are rejected before any network call.
 
 ---
@@ -205,28 +221,28 @@ Guessed from the key prefix, in `registry.ts`:
 | Prefix | Provider |
 |---|---|
 | `sk-ant-` | Anthropic |
-| `AQ.` | Google AI — the authorization-key format AI Studio issues now |
-| `AIza` | Google AI — the older standard-key format, being retired |
+| `AQ.` | Google AI- the authorization-key format AI Studio issues now |
+| `AIza` | Google AI- the older standard-key format, being retired |
 | `sk-` (anything else beginning `sk-`) | OpenAI |
 
 **Order matters, and it is the one real trap here:** Anthropic keys also begin `sk-`, so `sk-ant-`
 must be tested **first**. Getting this backwards sends every Anthropic key to the OpenAI adapter,
 where it fails as a confusing 401 rather than an obvious bug. There is a unit test for exactly this.
 
-**Prefix detection is a fast path, not a gate** — revised after the original design got this wrong.
+**Prefix detection is a fast path, not a gate**- revised after the original design got this wrong.
 It read: *an unrecognised prefix is rejected at key-set time with "That doesn't look like a supported
 API key" rather than stored and left to fail later.* That rejected a working key. Google replaced its
 entire key format during this project's life: AI Studio now issues `AQ.` authorization keys and is
 retiring `AIza`, so a table containing only `AIza` refuses every Google key created today.
 
-The lesson is the one D9 already draws about model IDs — **a table of provider-specific strings is
+The lesson is the one D9 already draws about model IDs- **a table of provider-specific strings is
 exactly as durable as a hardcoded model ID, and key prefixes churn for the same reasons.** So:
 
 - a recognised prefix routes the key with no questions asked;
 - an **unrecognised** prefix asks the user which provider it belongs to, saying that the format is
   unfamiliar rather than implying the key is wrong;
-- input that is not key-shaped at all — too short, containing whitespace, or a URL, which is a real
-  mis-paste — is refused without asking.
+- input that is not key-shaped at all- too short, containing whitespace, or a URL, which is a real
+  mis-paste- is refused without asking.
 
 The guarantee the original rule was protecting is untouched, because it never depended on the prefix:
 **a key is validated against its provider with one `listModels()` call before it is stored** (§7). An
@@ -324,7 +340,7 @@ The whole of the extension's security surface, now that there is no server.
 
 ## 8. Workflows
 
-### Flow A — Editor enhancement (in-place)
+### Flow A- Editor enhancement (in-place)
 
 1. **Trigger:** user selects text, presses `ctrl+alt+e` (`cmd+alt+e` on macOS). The keybinding's
    `when` clause is `editorTextFocus && editorHasSelection`.
@@ -337,14 +353,14 @@ The whole of the extension's security surface, now that there is no server.
    Cancellation aborts via `AbortController` and leaves the document untouched.
 6. **Apply:** a single `editBuilder.replace()` on the *original* range, in one edit so it is one
    undo step. Before applying, verify `document.version` is unchanged and the range still matches;
-   if the user edited during the request, do not replace — show the result in a preview document.
+   if the user edited during the request, do not replace- show the result in a preview document.
 7. **Failure:** the selection is never destroyed. See §9.
 
-### Flow B — Chat participant (`@enhance`)
+### Flow B- Chat participant (`@enhance`)
 
 1. **Contribution:** `package.json` declares `chatParticipants` with
    `id: "prompt-enhancer.enhance"`, `name: "enhance"`, `fullName`, `description`, `isSticky: true`.
-2. **Registration:** `vscode.chat.createChatParticipant('prompt-enhancer.enhance', handler)` — the
+2. **Registration:** `vscode.chat.createChatParticipant('prompt-enhancer.enhance', handler)`- the
    id must match the contribution exactly.
 3. **Input:** `request.prompt` is the rough text. Mode comes from a slash command (`/code`,
    `/architecture`, `/refactor`), defaulting to `code`.
@@ -362,7 +378,7 @@ step differs.
 
 ## 9. Error handling & UX rules
 
-Rules, not suggestions — these are the behaviours tests assert.
+Rules, not suggestions- these are the behaviours tests assert.
 
 1. **A failed enhancement never modifies the document.** No partial writes, no clearing the
    selection, no writing an empty or truncated result.
@@ -426,7 +442,7 @@ Without this, every prompt change is unfalsifiable.
 
 Sequential. Each phase ends in a working, committed, reviewable state on its own branch.
 
-**Phase 1 — Repo & extension scaffold** ✅ complete
+**Phase 1- Repo & extension scaffold** ✅ complete
 
 1. `git init`, `.gitignore`, `.gitattributes`, `main` branch.
 2. pnpm workspace: `extension/`, `packages/prompts/`, root configs, shared `tsconfig.base.json`.
@@ -439,7 +455,7 @@ Sequential. Each phase ends in a working, committed, reviewable state on its own
 6. Verify: builds clean, unit tests pass, extension activates in the Extension Development Host,
    the command renders a prompt from a live selection.
 
-**Phase 2 — One provider end to end**
+**Phase 2- One provider end to end**
 The `ModelClient` interface and `ModelError` (§6), the registry with key-prefix detection,
 `SecretService`, the key and model commands with live validation, **one** adapter, and Flow A wired
 to the editor including every §9 rule and the Flow A.6 document-version guard. First shippable
@@ -447,19 +463,19 @@ version.
 
 Build one adapter, not three. The interface only earns trust once a second implementation lands, and
 designing speculatively for three providers before any of them works is how abstractions go wrong in
-both directions. **Expect the interface to change in Phase 3** — that is cheaper than guessing now.
+both directions. **Expect the interface to change in Phase 3**- that is cheaper than guessing now.
 Keep provider specifics inside the adapter so the change stays local when it comes.
 
-**Phase 3 — The other two providers**
+**Phase 3- The other two providers**
 The remaining two adapters, the model quick-pick and `promptEnhancer.provider` / `.model` settings,
 per-provider key storage, and the redaction test covering all three key shapes. Refactor the
 interface here if the new adapters expose a bad assumption. Ends with the `.vsix` size measured and
 recorded (§4).
 
-**Phase 4 — Chat participant**
+**Phase 4- Chat participant**
 Flow B, streaming, slash-command modes, follow-ups, cancellation.
 
-**Phase 5 — Evals, tests, packaging**
+**Phase 5- Evals, tests, packaging**
 Golden set and runner with `--provider` / `--model` flags, all-three-provider run per D10,
 `@vscode/test-electron` suite, CI, `vsce` packaging, README with the §13 privacy disclosure.
 
@@ -499,7 +515,7 @@ golden runner and the manual pass spend real tokens.
 ## 13. Branching, CI, and publishing
 
 - **Remote:** `github.com/Geoffrey-Zulu/prompt-enhancer` (private).
-- **Branching — three tiers, and `dev` is the one you work from:**
+- **Branching- three tiers, and `dev` is the one you work from:**
   - **`main` holds production-ready code only.** It advances from `dev` at a release, never from a
     feature branch, and is never pushed to directly. Until Phase 5 packages a `.vsix` there is
     nothing production-ready to put on it, so it deliberately sits behind `dev`.
@@ -511,8 +527,8 @@ golden runner and the manual pass spend real tokens.
 - **Commits:** conventional commits (`feat:`, `fix:`, `docs:`, `chore:`).
 - **CI (Phase 5):** lint, typecheck, unit + integration tests on every pull request into `dev` and
   `main`; `vsce package` artifact on `main` only, since that is the branch a release comes from. The
-  eval runner is not in CI — it needs a real key.
-- **Publishing:** VS Code Marketplace via `vsce`. Requires a publisher ID and a PAT — an external
+  eval runner is not in CI- it needs a real key.
+- **Publishing:** VS Code Marketplace via `vsce`. Requires a publisher ID and a PAT- an external
   step for the repo owner.
 - **Privacy disclosure (required in the README and the Marketplace listing):** the text you select
   is sent to **whichever provider your API key belongs to** - Anthropic, OpenAI, or Google - and
@@ -528,9 +544,9 @@ providers cost it one clause, not a paragraph of caveats.
 
 ## 14. Deferred to v2
 
-- **`vscode.lm` / Copilot-backed access** (D6) — the intended answer for users without a key, and
+- **`vscode.lm` / Copilot-backed access** (D6)- the intended answer for users without a key, and
   the first thing to build after v1 ships.
-- **The cloud proxy**, if it is ever wanted: it returns as a whole workstream — Firebase Functions
+- **The cloud proxy**, if it is ever wanted: it returns as a whole workstream- Firebase Functions
   v2, Genkit, `defineSecret`, a template-version allowlist so old installs keep working, per-caller
   quota, a global spend cap, `maxInstances`, a kill switch, a billing alert, and an identity
   mechanism. Anonymous Firebase Auth (not deprecated, and with opt-in 30-day cleanup it does not

@@ -110,7 +110,7 @@ describe('toModelError', () => {
 
   it.each(cases)('maps status %i to %s', (status, kind) => {
     // This SDK has one error class carrying a numeric status rather than a class
-    // per status, so the §9.4 mapping switches on `error.status` — structured
+    // per status, so the §9.4 mapping switches on `error.status`- structured
     // data off a typed error, not a message-string match.
     const mapped = toModelError(new ApiError({ message: 'x', status }), { model: MODEL });
 

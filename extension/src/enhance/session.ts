@@ -15,7 +15,7 @@ import { withDeadline } from './deadline.js';
 import { reportFailure, type Reporter } from './report.js';
 
 /**
- * Resolving "which client, which model" (TDD §6, §7) — the first step of the
+ * Resolving "which client, which model" (TDD §6, §7)- the first step of the
  * orchestration both entry points share, so Flow A and (in Phase 4) Flow B
  * cannot drift apart on key handling or model choice.
  *
@@ -49,7 +49,7 @@ export async function resolveSession(
 
 /**
  * Resolves the active provider and builds its adapter from a key read per call
- * (§7) — the client is constructed here and thrown away after, never held at
+ * (§7)- the client is constructed here and thrown away after, never held at
  * module scope and never built from `process.env`.
  *
  * Split out from `resolveSession` because "Select Model" needs a client in order
@@ -76,7 +76,7 @@ export async function resolveClient(
 /**
  * The active provider (§7), in order:
  *
- * 1. with exactly one key stored, that is the provider — no setting, no prompt;
+ * 1. with exactly one key stored, that is the provider- no setting, no prompt;
  * 2. the `promptEnhancer.provider` setting, if it names a provider with a key;
  * 3. the remembered choice, if it still has a key;
  * 4. otherwise prompt once and remember.
@@ -93,7 +93,7 @@ async function resolveProvider(
 
   const only = stored[0];
   if (only === undefined) {
-    // Not an error — the user simply has not set up yet (§7).
+    // Not an error- the user simply has not set up yet (§7).
     await report(new ModelError('no_key'));
     return undefined;
   }
@@ -138,7 +138,7 @@ async function resolveProvider(
  *
  * The setting is **validated on use, not on write**, so a typo surfaces as
  * `model_not_found` with a Change Model action instead of being swallowed. That
- * validation is the provider's 404 on the real call — deliberately not a
+ * validation is the provider's 404 on the real call- deliberately not a
  * pre-flight check, which would cost a request per enhancement.
  */
 async function resolveModel(
@@ -166,7 +166,7 @@ async function resolveModel(
  * Fetches the models this key can use, under the §9.5 deadline and cancellable.
  * Returns `undefined` when it failed or was cancelled, having already reported.
  *
- * This is the same call that validates a key (§7) — one request confirms the
+ * This is the same call that validates a key (§7)- one request confirms the
  * key *and* populates the quick-pick.
  */
 export async function fetchModels(
@@ -200,7 +200,7 @@ export async function fetchModels(
  * command. Stores the choice per provider so it is asked once, not every time.
  *
  * `models` is passed in by "Set API Key", which has just listed them as part of
- * validating the key — one request, not two (§7).
+ * validating the key- one request, not two (§7).
  */
 export async function pickModel(
   services: Services,

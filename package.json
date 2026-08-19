@@ -2,7 +2,7 @@
   "name": "prompt-enhancer-workspace",
   "private": true,
   "version": "0.0.0",
-  "description": "Prompt Enhancer VS Code extension — workspace root",
+  "description": "Prompt Enhancer VS Code extension- workspace root",
   "license": "UNLICENSED",
   "engines": {
     "node": ">=20"
