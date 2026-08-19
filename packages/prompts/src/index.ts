@@ -3,27 +3,27 @@
  *
  * The single source of truth for the enhancement prompt (TDD D3).
  *
- * Both consumers — the extension's BYOK path and the Firebase flow — import
- * `renderEnhancePrompt` from here, so the template text exists in exactly one
- * authored file: `templates/enhance.v1.md`.
+ * All three consumers — the editor command, the chat participant, and the eval
+ * runner — import `renderEnhancePrompt` from here, so the template text exists
+ * in exactly one authored file: `templates/enhance.v1.md`.
  *
  * The template is inlined at build time by `scripts/generate.mjs` into
  * `src/generated/template.ts`, which also carries its sha256. Nothing reads
- * from disk at runtime, so this works identically when bundled into a .vsix
- * or a Cloud Functions deploy.
+ * from disk at runtime, so this works identically once bundled into a .vsix.
  */
 
 import { TEMPLATE_SOURCE, TEMPLATE_SHA256 } from './generated/template.js';
 
 export { TEMPLATE_SHA256 };
 
-/** Bump when `templates/enhance.*.md` changes. See TDD §5. */
+/**
+ * Bump when `templates/enhance.*.md` changes behaviour, and re-run the goldens
+ * (TDD §5, §10). There is no version negotiation to worry about: the template
+ * and the code that uses it ship together in one .vsix.
+ */
 export const TEMPLATE_VERSION = 'enhance.v1';
 
-/** Versions a server will still render for older installs. See TDD §5. */
-export const ACCEPTED_TEMPLATE_VERSIONS: readonly string[] = [TEMPLATE_VERSION];
-
-/** Closed enum — resolves the draft TDD's undefined `mode`. */
+/** Closed enum — unknown modes are rejected before any network call. */
 export const ENHANCE_MODES = ['code', 'architecture', 'refactor'] as const;
 export type EnhanceMode = (typeof ENHANCE_MODES)[number];
 
@@ -110,8 +110,9 @@ function fill(template: string, values: Readonly<Record<string, string>>): strin
 
 /**
  * Renders the enhancement prompt. Pure and deterministic: the same input
- * always produces byte-identical output, which is what lets the BYOK and proxy
- * paths agree, and what the unit tests assert.
+ * always produces byte-identical output, so the editor command, the chat
+ * participant, and the eval runner cannot disagree about what was sent — which
+ * is what makes a golden result meaningful.
  */
 export function renderEnhancePrompt(input: EnhanceInput): RenderedPrompt {
   const { roughText, context, mode } = input;

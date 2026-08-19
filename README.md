@@ -15,8 +15,10 @@ Design and build order live in [tdd.md](tdd.md); current state and what to do ne
 |---|---|
 | `extension/` | the VS Code extension — the publishable artifact |
 | `packages/prompts/` | the enhancement prompt, single source of truth (TDD D3) |
-| `functions/` | Firebase Functions v2 + Genkit backend (arrives in Phase 4) |
-| `evals/` | golden set for the §10 quality bar (Phase 6) |
+| `evals/` | golden set for the §10 quality bar (Phase 4) |
+
+The extension is BYOK-only: the user supplies a Gemini API key, and it calls Gemini directly. There
+is no backend, no account, and no sign-in — see TDD D1 for why the cloud proxy was cut.
 
 ## Setup
 
