@@ -6,6 +6,11 @@ tracks state, not design. Section references below (§) point at the TDD.
 **Current state:** Phase 1 complete on branch `feature/phase-1-scaffold`. Not merged, no remote.
 **Next up:** Phase 2 — BYOK end to end. With the proxy cut, Phase 2 is the whole product minus chat.
 
+> **Provider change, rev 3:** the model is **Anthropic `claude-opus-5`** via the official
+> `@anthropic-ai/sdk` (D2), not Gemini. Gemini was only ever pinned because the cut backend was
+> Genkit; a Gemini adapter behind the same interface is a v1.1 item. If you see `gemini` anywhere
+> outside tdd.md §14, it is stale — report it.
+
 > **Scope change, rev 2:** the cloud proxy is cut from v1 (D1). The extension is BYOK-only —
 > no server, no accounts, no sign-in, nothing to provision. Former Phases 4 (Firebase backend) and
 > 5 (proxy client) are withdrawn to v2; former Phase 6 is renumbered Phase 4. If you are reading an
@@ -75,31 +80,45 @@ Things worth knowing before you write any code:
 
 ## Phase 2 — BYOK end to end ⬅ next
 
-The first shippable version. No backend, no accounts — the user pastes a Gemini key and it works.
+The first shippable version. No backend, no accounts — the user pastes an Anthropic key and it works.
 
 ### Key handling (§7)
 
 - [ ] `extension/src/services/SecretService.ts` wrapping `context.secrets`
-      - key `promptEnhancer.geminiApiKey`; read per call, never cached in a module variable
+      - key `promptEnhancer.anthropicApiKey`; read per call, never cached in a module variable
+      - construct the `Anthropic` client per call from that key — never at module scope, never from
+        `process.env` (a dev-environment key must not stand in for the user's)
       - must never touch `workspace.configuration`, workspace state, or `globalState` — settings
         sync and workspace files are the two places a key must not end up
 - [ ] Commands `promptEnhancer.setApiKey` / `clearApiKey`, **added to `extension/package.json`
       contributions in this phase**
       - `showInputBox` with `password: true`
-      - on set, validate with one `GET /v1beta/models` call and report the result; never store an
+      - on set, validate with one `client.models.list()` call and report the result; never store an
         invalid key silently
 - [ ] No-key state treated as normal, not an error: message + "Set API Key" action, with a pointer
-      to where a free key comes from
+      to console.anthropic.com for getting a key
 
 ### The model call (§6)
 
-- [ ] `extension/src/services/GeminiClient.ts`
-      - [ ] `POST .../models/gemini-2.5-flash:generateContent`, key in the `x-goog-api-key` **header**
-            — never the URL or a query string
-      - [ ] `systemInstruction` + `contents` from `renderEnhancePrompt`; `temperature: 0.3`
-      - [ ] `AbortController` support and a 30 s timeout
-      - [ ] Handle all three response edge cases explicitly: empty/absent `candidates`,
-            `finishReason: MAX_TOKENS`, and `SAFETY` / `promptFeedback.blockReason`
+- [ ] Add `@anthropic-ai/sdk` to `extension/package.json`; confirm tsup bundles it (it must not be
+      `external` — a `.vsix` has no `node_modules`)
+- [ ] `extension/src/services/ClaudeClient.ts`, behind a `ModelClient` interface so a Gemini adapter
+      can be added later without touching callers
+      - [ ] `client.messages.create` with `model: MODEL_ID`, `max_tokens: 16_000`
+      - [ ] **No `temperature` / `top_p` / `top_k`** — sampling params are rejected with a 400 on
+            `claude-opus-5`. Rev 2 of the TDD wrongly specified `temperature: 0.3`
+      - [ ] `system` as a **top-level param** (array of text blocks), not a `role: 'system'` message
+      - [ ] `cache_control: { type: 'ephemeral' }` on the system block — the ~700-token template is
+            above the 512-token cache minimum, so repeats are ~90% cheaper. Never interpolate
+            anything volatile into the system block or it stops caching
+      - [ ] `thinking: { type: 'adaptive' }` + `output_config: { effort: 'low' }`. **Do not disable
+            thinking** — with it disabled this model can leak `<thinking>` tags into the visible
+            response, which the editor path would write into the user's file
+      - [ ] `max_tokens` caps thinking **plus** text together — don't size it tight to the answer
+      - [ ] `AbortController` via the request-options `signal`, and a 30 s timeout
+      - [ ] Read output by filtering `response.content` to `type === 'text'` and joining —
+            **`content[0].text` is wrong**, the first block is usually a `thinking` block
+      - [ ] Check `stop_reason` **before** reading content: handle `'refusal'` and `'max_tokens'`
       - [ ] Never return an empty or truncated string to the caller as if it were success
 
 ### Flow A (§8)
@@ -116,8 +135,12 @@ The first shippable version. No backend, no accounts — the user pastes a Gemin
 
 ### Errors (§9)
 
-- [ ] Map every row of the §9.4 table: 400 `API_KEY_INVALID`, 403, 429, 500/503, `MAX_TOKENS`,
-      `SAFETY`, no key
+- [ ] Map every row of the §9.4 table by **typed SDK error class**, most-specific first —
+      `AuthenticationError`, `PermissionDeniedError`, `RateLimitError`, `InternalServerError`,
+      `BadRequestError`, `APIConnectionError` — plus `stop_reason` `'refusal'` / `'max_tokens'`
+      and the no-key case. Never string-match error messages
+- [ ] Do **not** wrap a retry loop around the SDK — it already retries 429/5xx twice with backoff,
+      so an error reaching your handler means retries are exhausted
 - [ ] One `showErrorMessage` per failure, with the right action button
 - [ ] Offline reported as offline; raw HTTP bodies and stack traces go to the output channel only
 
@@ -125,7 +148,7 @@ The first shippable version. No backend, no accounts — the user pastes a Gemin
 
 - [ ] HTTP error mapping, response-shape edge cases, cap enforcement, key redaction
 
-**Acceptance:** with a Gemini key set, selecting rough text and pressing the keybinding replaces it
+**Acceptance:** with an Anthropic key set, selecting rough text and pressing the keybinding replaces it
 with a structured prompt in one undo step; every failure path leaves the buffer exactly as it was.
 
 ---
@@ -139,8 +162,9 @@ with a structured prompt in one undo step; every failure path leaves the buffer 
       `vscode.chat.createChatParticipant('prompt-enhancer.enhance', handler)` — id must match the
       contribution exactly
 - [ ] Mode from the slash command, defaulting to `code`
-- [ ] Stream via `:streamGenerateContent` with `alt=sse`, rendered with
-      `ChatResponseStream.markdown()` as chunks arrive (D8)
+- [ ] Stream via `client.messages.stream(...)`, rendering `text_delta` chunks with
+      `ChatResponseStream.markdown()` as they arrive (D8); check `stop_reason` on the final message
+      before treating the result as complete
 - [ ] Honour the handler's `CancellationToken`
 - [ ] Missing key reported in the chat stream with the same "Set API Key" action
 - [ ] Follow-up actions: "Insert into editor", "Copy"
@@ -180,8 +204,8 @@ and cancellation stops it mid-stream.
 Cannot be done from a coding session:
 
 - [ ] Create the GitHub repo and add the remote (nothing is pushed yet)
-- [ ] A Gemini API key for development and for running the goldens — free tier from Google AI
-      Studio is enough
+- [ ] An Anthropic API key for development and for running the goldens (`sk-ant-…`). Opus 5 is
+      $5/$25 per million tokens in/out; a golden run is a few cents
 - [ ] VS Code Marketplace publisher ID + PAT — **Phase 4**
 
 No Firebase project, no billing budget, and no Secret Manager entry are needed any more. Those were
@@ -193,9 +217,11 @@ proxy-only and are gone with it.
 
 - **`vscode.lm` / Copilot-backed access** — the answer for users without a key, and the first thing
   to build after v1 ships. Zero cost, no auth, no abuse surface.
+- **A Gemini adapter** behind the same `ModelClient` interface, chosen by key prefix (`sk-ant-` vs
+  `AIza`). Deferred for eval surface, not difficulty.
 - **The cloud proxy**, if ever wanted — returns as a whole workstream (Functions v2, Genkit,
   `defineSecret`, template-version allowlist, per-caller quota, spend cap, `maxInstances`, kill
   switch, billing alert, and an identity mechanism). Cut because all of it exists to serve users who
   could instead use `vscode.lm` for free.
-- Additional BYOK providers including Anthropic; prompt history and a saved-prompt library;
-  workspace-aware context beyond `languageId`; team/org key management; usage telemetry.
+- Prompt history and a saved-prompt library; workspace-aware context beyond `languageId`; team/org
+  key management; usage telemetry.

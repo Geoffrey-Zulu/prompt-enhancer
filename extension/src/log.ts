@@ -11,8 +11,12 @@ import * as vscode from 'vscode';
 
 let channel: vscode.LogOutputChannel | undefined;
 
-/** Google AI keys are `AIza` followed by 35 URL-safe characters. */
+/**
+ * Anthropic keys start `sk-ant-`. The bearer and `AIza` patterns are kept as
+ * cheap insurance: a stray token from anywhere must not reach the log either.
+ */
 const KEY_PATTERNS: readonly RegExp[] = [
+  /sk-ant-[A-Za-z0-9_-]{10,}/g,
   /AIza[0-9A-Za-z_-]{10,}/g,
   /\bBearer\s+[A-Za-z0-9._~+/-]+=*/gi,
 ];

@@ -34,7 +34,7 @@ export const MAX_ROUGH_TEXT_CHARS = 20_000;
 export const MAX_CONTEXT_CHARS = 2_000;
 
 /** The model both paths use (TDD D2). */
-export const MODEL_ID = 'gemini-2.5-flash';
+export const MODEL_ID = 'claude-opus-5';
 
 export interface EnhanceInput {
   roughText: string;

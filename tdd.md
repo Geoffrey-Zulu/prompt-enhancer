@@ -1,8 +1,8 @@
 # Technical Design Document: Prompt Enhancer VS Code Extension
 
 **Status:** approved for build
-**Last revised:** 2026-08-19 (rev 2 — cloud proxy cut from v1)
-**History:** initial draft `59d2899`; rev 1 (design review) `be9ab11`
+**Last revised:** 2026-08-19 (rev 3 — provider switched to Anthropic)
+**History:** initial draft `59d2899`; rev 1 (design review) `be9ab11`; rev 2 (proxy cut) `cfef000`
 
 ---
 
@@ -18,11 +18,11 @@ editor the rough text is replaced in place; in chat the result is streamed into 
 
 - **Editor enhancement:** keybinding replaces the highlighted text with an enhanced prompt.
 - **Chat participant:** `@enhance` handles requests in the VS Code native chat panel.
-- **BYOK, and only BYOK:** the user supplies their own Gemini API key, stored in VS Code
-  `SecretStorage`. The extension calls Gemini directly. There is **no account, no sign-in, and no
-  server** — see §2 D1.
+- **BYOK, and only BYOK:** the user supplies their own Anthropic API key, stored in VS Code
+  `SecretStorage`. The extension calls the Claude Messages API directly. There is **no account, no
+  sign-in, and no server** — see §2 D1.
 
-**Non-goals for v1:** a cloud proxy or any hosted backend, multi-provider BYOK, prompt
+**Non-goals for v1:** a cloud proxy or any hosted backend, a second model provider, prompt
 libraries/history, workspace-wide context gathering, team/org accounts, telemetry.
 
 ---
@@ -33,8 +33,8 @@ Settled. Changing one is a design change, not an implementation choice.
 
 | # | Decision | Rationale |
 |---|---|---|
-| D1 | **BYOK only in v1. No backend at all.** | A proxy on the author's Gemini key needs some notion of who is calling, or it is an open endpoint billing the author for strangers. Everything that machinery cost — anonymous auth, per-caller quota, spend caps, kill switch, a Firebase project, two build phases — bought one thing: a user with no key. That user is better served by `vscode.lm` (D6) than by a bill. Cut. |
-| D2 | **Single provider: Google AI (Gemini), model `gemini-2.5-flash`.** Pinned in one constant. | Two providers means two key formats, two SDKs, two sets of output quirks, twice the eval surface. |
+| D1 | **BYOK only in v1. No backend at all.** | A proxy on the author's API key needs some notion of who is calling, or it is an open endpoint billing the author for strangers. Everything that machinery cost — anonymous auth, per-caller quota, spend caps, kill switch, a Firebase project, two build phases — bought one thing: a user with no key. That user is better served by `vscode.lm` (D6) than by a bill. Cut. |
+| D2 | **Single provider: Anthropic, model `claude-opus-5`, via the official `@anthropic-ai/sdk`.** Pinned in one constant, behind a `ModelClient` interface. | Gemini was pinned in rev 1 only because the cut backend was Genkit + `@genkit-ai/googleai`; that rationale died with the proxy. With BYOK the provider should be whichever key the user holds, and prompt rewriting is squarely Claude's strength. Still exactly one provider — two means two key formats, two SDKs, two sets of output quirks, twice the eval surface. A Gemini adapter behind the same interface is a clean v1.1 addition (§14), not a v1 requirement. |
 | D3 | **The prompt template is a single authored file** in a shared workspace package. | Consumed by the extension and by the eval runner (§10), and it keeps the prompt independently testable. Prompt text never lives in TypeScript. |
 | D6 | **`vscode.lm` (Copilot-backed) is the v2 answer for users without a key.** | Zero cost to the author, no auth, no abuse surface — strictly better than a proxy. Requires the user to have a chat model provider, which is why it is not the v1 default. |
 | D7 | **Keybinding default is `ctrl+alt+e` / `cmd+alt+e`**, gated on `editorHasSelection`. | `ctrl+shift+e` is Focus Explorer on every platform and must not be overridden. |
@@ -64,7 +64,7 @@ prompt-enhancer/
 │   │   ├── chat/               # @enhance participant handler
 │   │   ├── services/
 │   │   │   ├── SecretService.ts    # wraps context.secrets
-│   │   │   └── GeminiClient.ts     # the one and only model call
+│   │   │   └── ClaudeClient.ts     # the one and only model call
 │   │   └── enhance/            # orchestration shared by both entry points
 │   ├── package.json            # contributes commands, keybindings, chatParticipants
 │   └── tsup.config.ts
@@ -90,13 +90,13 @@ as a v2 workstream, not as a stub carried in the meantime.
 - **Engine:** `"engines": { "vscode": "^1.90.0" }` — the version that stabilised both the Chat
   participant API and `vscode.lm`.
 - **Build:** `tsup`, CJS output, `external: ['vscode']`, `platform: 'node'`. The `vscode` module is
-  host-injected and must never be bundled; the workspace prompts package is bundled in, since a
-  `.vsix` has no `node_modules`.
-- **Runtime dependencies:** none. Global `fetch` calls the Gemini REST API directly — no
-  `@google/generative-ai` SDK, because one HTTP call does not justify a dependency in a shipped
-  extension.
+  host-injected and must never be bundled; the workspace prompts package and the Anthropic SDK are
+  both bundled in, since a `.vsix` has no `node_modules`.
+- **Runtime dependency:** `@anthropic-ai/sdk`, and nothing else. It is pure JS, bundles cleanly, and
+  handles auth headers, streaming SSE parsing, retries on 429/5xx, and typed errors — all of which
+  would otherwise be hand-rolled against a moving API.
 - **Secrets:** VS Code `SecretStorage` only (§7).
-- **Model:** `gemini-2.5-flash` via `generativelanguage.googleapis.com/v1beta`.
+- **Model:** `claude-opus-5` via `client.messages.create` / `.stream`.
 
 The entire extension is client-side. There is no infrastructure to provision, no deploy step, and
 no cost borne by the author.
@@ -113,7 +113,7 @@ export type EnhanceMode = typeof ENHANCE_MODES[number];
 
 export const TEMPLATE_VERSION = 'enhance.v1';
 export const TEMPLATE_SHA256  = '<computed at build time>';
-export const MODEL_ID         = 'gemini-2.5-flash';
+export const MODEL_ID         = 'claude-opus-5';
 
 export function renderEnhancePrompt(input: {
   roughText: string;
@@ -141,38 +141,72 @@ The generated file is not committed.
 
 ## 6. The model call
 
-One outbound request, `POST` to
-`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent`, with
-the key in the `x-goog-api-key` header — never in the URL or a query string.
+`client.messages.create` (editor) or `client.messages.stream` (chat). The SDK sets the `x-api-key`
+header from the key we pass it; we never construct auth headers ourselves.
 
-**Request body** — `systemInstruction` carries the rendered system text, `contents` the user text:
+```ts
+const client = new Anthropic({ apiKey });   // key read per call from SecretStorage
 
-```json
-{
-  "systemInstruction": { "parts": [{ "text": "<rendered system>" }] },
-  "contents": [{ "role": "user", "parts": [{ "text": "<rendered user>" }] }],
-  "generationConfig": { "temperature": 0.3, "maxOutputTokens": 4096 }
-}
+const response = await client.messages.create({
+  model: MODEL_ID,                          // 'claude-opus-5'
+  max_tokens: 16_000,
+  system: [{ type: 'text', text: rendered.system, cache_control: { type: 'ephemeral' } }],
+  messages: [{ role: 'user', content: rendered.user }],
+  thinking: { type: 'adaptive' },
+  output_config: { effort: 'low' },
+}, { signal: abortController.signal });
 ```
 
-Low temperature deliberately: this is a rewriting task with a required shape, not a creative one.
+Four decisions in that call, each load-bearing:
 
-**Response** — the enhanced prompt is
-`candidates[0].content.parts[*].text` joined. Three cases must be handled explicitly rather than
-assumed away:
+**No `temperature`.** Sampling parameters (`temperature`, `top_p`, `top_k`) are **rejected with a
+400** on `claude-opus-5`. Rev 2 of this document specified `temperature: 0.3`; that would not have
+run. Output shape is steered by the template's instructions instead.
+
+**`system` is a top-level parameter, not a message.** It takes a string or an array of text blocks.
+Never fake it with a `role: 'system'` message in `messages`.
+
+**Thinking stays on, at `effort: 'low'`.** Thinking is on by default on this model. It is tempting to
+pass `thinking: { type: 'disabled' }` for a rewriting task, and that is a trap: with thinking
+disabled Opus 5 can leak `<thinking>` tags into the *visible* response — which on the editor path
+would be written straight into the user's file. `effort: 'low'` keeps thinking on (no leak) while
+holding cost and latency down, and low effort is a good fit for a bounded rewriting task. Note
+`max_tokens` caps thinking **plus** response text together, hence 16 000 rather than something
+tight around the expected output.
+
+**`cache_control` on the system block.** The rendered system prompt is ~700 tokens — above this
+model's 512-token cache minimum — and byte-identical across every enhancement in the same mode. It
+caches, making repeat use roughly 90% cheaper on the prompt. It only caches while the prefix is
+stable, so nothing volatile (timestamps, selection text, counters) may ever be interpolated into
+the system block.
+
+**Reading the response.** `response.content` is an array of blocks and, with thinking on, the
+**first block is usually a `thinking` block**. `content[0].text` is therefore wrong — filter to
+`type === 'text'` and join:
+
+```ts
+const text = response.content
+  .filter((b): b is Anthropic.TextBlock => b.type === 'text')
+  .map((b) => b.text)
+  .join('');
+```
+
+Three response cases must be handled explicitly rather than assumed away:
 
 | Case | Handling |
 |---|---|
-| `candidates` empty or absent | treat as failure; do not write an empty string over the selection |
-| `finishReason` is `MAX_TOKENS` | output is truncated — warn, and do not replace in place |
-| `finishReason` is `SAFETY` / `promptFeedback.blockReason` set | report that the model declined; leave the document alone |
+| `stop_reason: 'refusal'` | Opus 5 runs safety classifiers. Check `stop_reason` **before** reading content; report that the model declined and leave the document alone. |
+| `stop_reason: 'max_tokens'` | Output is truncated — warn, and do not replace in place. |
+| No `text` block, or joined text is empty | Treat as failure; never write an empty string over the selection. |
 
 **Input caps** (enforced before the call): `rough_text` 1–20 000 chars, `context` ≤ 2 000 chars.
 Rejecting an oversized selection client-side is what stops a whole-file selection from becoming a
 surprise bill on the user's key.
 
-**Streaming** — the chat path uses `:streamGenerateContent` with `alt=sse` (D8). The editor path
-uses the non-streaming endpoint.
+**Streaming** — the chat path uses `client.messages.stream(...)` and consumes `text` deltas
+(`content_block_delta` with `delta.type === 'text_delta'`), per D8. The editor path is
+non-streaming. On the streaming path, check `stop_reason` on the final message before treating the
+result as complete.
 
 ---
 
@@ -180,18 +214,20 @@ uses the non-streaming endpoint.
 
 The whole of the extension's security surface, now that there is no server.
 
-- **Store:** `context.secrets.store('promptEnhancer.geminiApiKey', key)`. Keys must **never** touch
-  `workspace.configuration`, workspace state, `globalState`, logs, or error messages. Settings sync
-  and workspace files are the two places a key must not end up.
+- **Store:** `context.secrets.store('promptEnhancer.anthropicApiKey', key)`. Keys must **never**
+  touch `workspace.configuration`, workspace state, `globalState`, logs, or error messages. Settings
+  sync and workspace files are the two places a key must not end up.
 - **Retrieve:** `context.secrets.get(...)`, read per call, never cached in a module-level variable.
+  The `Anthropic` client is constructed per call from that key — never at module scope, and never
+  from `process.env`, so a key in the developer's environment can't silently stand in for the user's.
 - **Commands:** "Prompt Enhancer: Set API Key" (`showInputBox` with `password: true`) and
   "Prompt Enhancer: Clear API Key".
-- **Validate on set:** one minimal `GET /v1beta/models` call to confirm the key works, and report
-  the result. Do not store an invalid key silently.
+- **Validate on set:** one `client.models.list()` call to confirm the key works, and report the
+  result. Do not store an invalid key silently.
 - **Rotation:** setting a key overwrites. Clearing removes it, and the extension then prompts for a
   key on next use rather than failing obscurely.
-- **Redaction:** all logging goes through a single channel that strips `AIza…` patterns and bearer
-  tokens at the boundary, so forgetting to redact at a call site is not possible (§9.3).
+- **Redaction:** all logging goes through a single channel that strips `sk-ant-…` patterns at the
+  boundary, so forgetting to redact at a call site is not possible (§9.3).
 - **No key present** is a normal state, not an error: the first enhancement attempt shows a message
   with a "Set API Key" action, and links to where a free key comes from.
 
@@ -242,17 +278,23 @@ Rules, not suggestions — these are the behaviours tests assert.
    action button ("Set API Key", "Retry", "Open Output").
 3. **Diagnostics go to a dedicated `OutputChannel`**, with the API key redacted unconditionally at
    the logging boundary.
-4. **Mapped messages** — every one of these is a real Gemini response, not a hypothetical:
+4. **Mapped messages** — branch on the SDK's typed error classes, never on message strings, and
+   order the `catch` chain most-specific first:
 
-| Cause | Message |
+| SDK error / condition | Message |
 |---|---|
-| HTTP 400 `API_KEY_INVALID` | "That API key was rejected — check it or set a new one." + Set API Key |
-| HTTP 403 | "The key is valid but not permitted to use this model." |
-| HTTP 429 | "Gemini rate limit reached — wait a moment and retry." + Retry |
-| HTTP 500/503 | "Gemini is unavailable right now." + Retry |
-| `finishReason: MAX_TOKENS` | "The result was truncated — try a smaller selection." |
-| `SAFETY` / `blockReason` | "The model declined to process this text." |
-| No key | "Add a Gemini API key to use Prompt Enhancer." + Set API Key |
+| `Anthropic.AuthenticationError` (401) | "That API key was rejected — check it or set a new one." + Set API Key |
+| `Anthropic.PermissionDeniedError` (403) | "The key is valid but not permitted to use this model." |
+| `Anthropic.RateLimitError` (429) | "Rate limit reached — wait a moment and retry." + Retry |
+| `Anthropic.InternalServerError` (≥500, incl. 529 overloaded) | "The Claude API is unavailable right now." + Retry |
+| `Anthropic.BadRequestError` (400) | "The request was rejected." + Open Output (the body goes to the log — this is a bug in us, not the user) |
+| `Anthropic.APIConnectionError` | "Can't reach the Claude API — check your connection." |
+| `stop_reason: 'refusal'` | "The model declined to process this text." |
+| `stop_reason: 'max_tokens'` | "The result was truncated — try a smaller selection." |
+| No key | "Add an Anthropic API key to use Prompt Enhancer." + Set API Key |
+
+The SDK already retries 429 and 5xx twice with backoff before throwing, so a `RateLimitError`
+reaching this table means retries were exhausted — do not add a second retry layer around it.
 
 5. **Timeout:** 30 s client-side, then abort with a retry action.
 6. **Offline** is detected and reported as offline, not as a generic failure.
@@ -296,7 +338,7 @@ Sequential. Each phase ends in a working, committed, reviewable state on its own
    the command renders a prompt from a live selection.
 
 **Phase 2 — BYOK end to end**
-`SecretService`, the two key commands with live validation, `GeminiClient`, Flow A wired to the
+`SecretService`, the two key commands with live validation, `ClaudeClient`, Flow A wired to the
 editor including every §9 rule, the §6 response edge cases, and the Flow A.6 document-version
 guard. This is the first shippable version — and with the proxy cut, it is the whole product minus
 chat.
@@ -345,7 +387,7 @@ No backend means no emulator, no deploy testing, and no Genkit Developer UI in t
 - **Publishing:** VS Code Marketplace via `vsce`. Requires a publisher ID and a PAT — an external
   step for the repo owner.
 - **Privacy disclosure (required in the README and the Marketplace listing):** the text you select
-  is sent to Google's Gemini API using your own API key, and nowhere else. The extension has no
+  is sent to Anthropic's Claude API using your own API key, and nowhere else. The extension has no
   server, collects no telemetry, and the author never sees your text or your key. The key is held
   in the OS credential store via VS Code `SecretStorage`.
 
@@ -364,5 +406,8 @@ what cutting the proxy bought.
   mechanism. Anonymous Firebase Auth (not deprecated, and with opt-in 30-day cleanup it does not
   count toward billing quotas) is the cheapest option; GitHub OAuth is the honest one. The reason
   it was cut is that all of it exists to serve users who could instead use D6 for free.
-- Additional BYOK providers including Anthropic; prompt history and a saved-prompt library;
-  workspace-aware context beyond `languageId`; team/org key management; usage telemetry.
+- **A Gemini adapter** behind the same `ModelClient` interface, selected by key prefix (`sk-ant-` →
+  Anthropic, `AIza` → Gemini). Small and well-scoped once v1 ships — the reason it is not in v1 is
+  eval surface, not difficulty.
+- Prompt history and a saved-prompt library; workspace-aware context beyond `languageId`; team/org
+  key management; usage telemetry.
