@@ -13,7 +13,7 @@ export default defineConfig({
   // tsup treats `dependencies` as external by default, which is exactly wrong
   // here — a missing entry in this list ships an extension that cannot resolve
   // its own SDK.
-  noExternal: ['@prompt-enhancer/prompts', '@anthropic-ai/sdk'],
+  noExternal: ['@prompt-enhancer/prompts', '@anthropic-ai/sdk', 'openai', '@google/genai'],
   sourcemap: true,
   clean: true,
   dts: false,

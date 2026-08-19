@@ -12,12 +12,27 @@ import type { RenderedPrompt } from '@prompt-enhancer/prompts';
 
 export type ProviderId = 'anthropic' | 'openai' | 'google';
 
+/**
+ * §9.5: 30 s client-side, then abort with a retry action.
+ *
+ * Lives here rather than in `enhance/` because every adapter needs it for its
+ * own HTTP timeout, and three copies of the same number is how they drift. The
+ * orchestration's deadline (`enhance/deadline.ts`) is the wall-clock cap; this
+ * bounds a single HTTP attempt inside it.
+ */
+export const REQUEST_TIMEOUT_MS = 30_000;
+
 /** Display names for messages. A lookup table, deliberately not a `switch`. */
 export const PROVIDER_LABELS: Record<ProviderId, string> = {
   anthropic: 'Anthropic',
   openai: 'OpenAI',
   google: 'Google AI',
 };
+
+/** Narrows a value read from settings, which is a `string` as far as VS Code knows. */
+export function isProviderId(value: unknown): value is ProviderId {
+  return typeof value === 'string' && Object.prototype.hasOwnProperty.call(PROVIDER_LABELS, value);
+}
 
 /** A model the active key can actually use (D9). Never hardcoded anywhere. */
 export interface ModelInfo {

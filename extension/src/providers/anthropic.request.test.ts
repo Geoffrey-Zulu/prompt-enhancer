@@ -21,6 +21,7 @@ interface Captured {
   url: string;
   body: Record<string, unknown>;
   headers: Headers;
+  signal: AbortSignal | null | undefined;
 }
 
 let captured: Captured[] = [];
@@ -65,7 +66,16 @@ beforeEach(() => {
       url: String(input),
       body: JSON.parse(String(init?.body ?? '{}')) as Record<string, unknown>,
       headers: new Headers(init?.headers),
+      signal: init?.signal,
     });
+    // Behave like the real `fetch`: an aborted signal rejects with an
+    // AbortError rather than being quietly ignored. Without this the stub makes
+    // cancellation look like it works whether or not the SDK forwards it.
+    if (init?.signal?.aborted === true) {
+      const abort = new Error('This operation was aborted');
+      abort.name = 'AbortError';
+      throw abort;
+    }
     return respondWith();
   }) as typeof fetch;
 });
@@ -161,15 +171,24 @@ describe('AnthropicClient.enhance — the response', () => {
     );
   });
 
-  it('aborts on the signal rather than finishing the request', async () => {
+  it('threads a cancellation signal down to the request', async () => {
+    // §6 wants cancellation real rather than cosmetic, so the assertion is that
+    // a signal reaches `fetch` — not merely that something rejected.
+    await client().enhance(PROMPT, MODEL, new AbortController().signal);
+
+    expect(captured[0]?.signal).toBeDefined();
+    expect(captured[0]?.signal).not.toBeNull();
+  });
+
+  it('surfaces an abort as a cancellation, not as a provider failure or a result', async () => {
     const cancel = new AbortController();
     cancel.abort();
 
-    // The abort surfaces as a cancellation, not as a provider failure — and
-    // certainly not as a result.
-    await expect(client().enhance(PROMPT, MODEL, cancel.signal)).rejects.not.toBeInstanceOf(
-      ModelError,
+    const attempt = client().enhance(PROMPT, MODEL, cancel.signal);
+    await expect(attempt).rejects.toThrowError(
+      expect.objectContaining({ name: 'CancelledError' }),
     );
+    await expect(attempt).rejects.not.toBeInstanceOf(ModelError);
   });
 });
 

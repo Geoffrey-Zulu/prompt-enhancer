@@ -3,10 +3,10 @@
 Working task list for the build order in [tdd.md](tdd.md) §11. Read the TDD first; this file
 tracks state, not design. Section references below (§) point at the TDD.
 
-**Current state:** Phase 2 complete on `feature/phase-2-byok`, open as a pull request into `dev`.
-Remote is `github.com/Geoffrey-Zulu/prompt-enhancer`; `dev` holds Phase 1 and is the default branch;
-`main` holds the baseline only, because nothing is production-ready until Phase 5 packages a `.vsix`.
-**Next up:** Phase 3 — the other two providers. **Branch it from `dev`** (see tdd.md §13).
+**Current state:** Phase 3 complete on `feature/phase-3-providers`, open as a pull request into
+`dev`. Remote is `github.com/Geoffrey-Zulu/prompt-enhancer`; `dev` is the default branch and holds
+Phases 1–2; `main` holds the baseline only, because nothing is production-ready until Phase 5.
+**Next up:** Phase 4 — the chat participant. **Branch it from `dev`** (see tdd.md §13).
 
 > **Provider model, rev 4:** the extension supports **Anthropic, OpenAI, and Google AI** (D2), each
 > an adapter behind one `ModelClient` interface (§6). **No model ID is hardcoded** — models are
@@ -214,26 +214,81 @@ as it can be without an extension host, and `@vscode/test-electron` coverage is 
 
 ---
 
-## Phase 3 — The other two providers ⬅ next
+## Phase 3 — The other two providers ✅ complete
 
-- [ ] The remaining two adapters against the same interface. **Refactor `types.ts` if they expose a
+- [x] The remaining two adapters against the same interface. **Refactor `types.ts` if they expose a
       bad assumption** — that is expected, and cheaper than having guessed in Phase 2
-- [ ] Per-provider key storage exercised with two or more keys stored simultaneously
-- [ ] `promptEnhancer.provider` setting for choosing between stored keys; prompt-once-and-remember
+- [x] Per-provider key storage exercised with two or more keys stored simultaneously
+- [x] `promptEnhancer.provider` setting for choosing between stored keys; prompt-once-and-remember
       when it is unset
-- [ ] Model quick-pick working across all three (`listModels` shapes differ per provider)
-- [ ] Redaction test extended to all three key shapes (§7)
-- [ ] Confirm no `switch (provider)` has leaked outside `registry.ts`
-- [ ] **Measure and record the `.vsix` size** (§4). Three bundled SDKs is the biggest thing this
+- [x] Model quick-pick working across all three (`listModels` shapes differ per provider)
+- [x] Redaction test extended to all three key shapes (§7)
+- [x] Confirm no `switch (provider)` has leaked outside `registry.ts`
+- [x] **Measure and record the `.vsix` size** (§4). Three bundled SDKs is the biggest thing this
       design spends. If it's a problem, the fix is lazy `require()` per adapter — not dropping a
       provider
 
 **Acceptance:** the same rough text enhances successfully through all three providers, and switching
-provider needs no re-paste of keys.
+provider needs no re-paste of keys. **Unmet** — see below; it needs an OpenAI and a Google key.
+
+### What the second and third implementations exposed
+
+The interface survived. `ModelClient`, `ModelInfo`, and the `ModelError` kind union all took both new
+adapters unchanged, which is the outcome Phase 2 was gambling on. One thing did move: the 30 s
+`REQUEST_TIMEOUT_MS` was duplicated in the adapter, and three copies of the same number is how they
+drift, so it now lives in `providers/types.ts` and `enhance/deadline.ts` re-exports it.
+
+Three provider differences the adapters absorb rather than leak (§6):
+
+- **Reasoning is shaped differently in all three responses**, and getting it wrong writes the model's
+  reasoning into the user's file. Anthropic: a separate `thinking` block. OpenAI: a `reasoning` output
+  item. **Google: a normal text part carrying `thought: true`** — the nastiest of the three, because a
+  reader that concatenates every `part.text` looks correct and is not.
+- **`@google/genai` has one error class, not a hierarchy.** `ApiError` carries a numeric `status`, so
+  its §9.4 mapping switches on that. Still structured data off a typed error, not a message match.
+  It also answers a *bad key* with `400 INVALID_ARGUMENT` rather than 401, which is the one place any
+  adapter reads error text — documented in `google.ts` with the reasoning.
+- **OpenAI's `listModels` has no capability data**, so it returns embeddings, speech and image models
+  with no way to tell them apart. Both it and Google filter by *excluding* non-text families rather
+  than allow-listing, so a newly released text model appears without a code change (D9's intent).
+
+Two judgement calls worth a second opinion:
+
+- **No `reasoning: {effort}` on OpenAI.** The model list includes non-reasoning models and sending
+  `reasoning` to one is a 400 — so pinning an effort would make the user's model choice decide
+  whether the extension worked. Anthropic keeps `effort: 'low'`; Google keeps its default. The cost
+  is that OpenAI reasoning spend is uncapped, which is why its output budget is 32 000, not 16 000.
+- **`store: false` on OpenAI.** The API default retains the user's selected text in their OpenAI
+  account. §13 promises the text goes to the provider and nowhere else; retention was not part of it.
+
+### Bundle size (§4)
+
+**The `.vsix` is 451 KB**, from a 2.6 MB bundle with the sourcemap excluded via a new
+`extension/.vscodeignore`. `@google/genai` and its transitive deps are ~1 600 KB of that — Vertex AI
+auth and the Live API's WebSocket stack, none of which this extension calls — against 447 KB for
+Anthropic and 410 KB for OpenAI. Full table in tdd.md §4. **No action taken:** 451 KB is unremarkable
+for a Marketplace extension, and esbuild already wraps each module in a lazy initialiser, so an
+unused SDK is parsed but never executed.
+
+Three optional native `require()`s (`bufferutil`, `utf-8-validate`, `supports-color`) survive in the
+bundle from `ws` and `debug`. All three sit inside `try` blocks in their own libraries, so they fail
+harmlessly in a `.vsix` that has no `node_modules`. Verified, not assumed.
+
+### Open from Phase 3 — needs keys, or a live editor
+
+- [ ] **The acceptance criterion itself:** enhance the same rough text through all three providers.
+      This needs an OpenAI key and a Google AI key; only Anthropic has been exercisable. Every rule
+      each adapter must follow is unit-tested against a stubbed `fetch`, which proves what goes on
+      the wire and how the response is read — **not** that the provider returns 200.
+- [ ] **Two keys stored at once:** confirm the provider quick-pick appears, that the choice is
+      remembered, and that `promptEnhancer.provider` overrides it.
+- [ ] **Switch provider without re-pasting:** store two keys, switch, enhance with each.
+- [ ] **Model quick-pick per provider:** confirm each list is populated and free of junk — in
+      particular that OpenAI's has no `dall-e` / `whisper` / embedding entries.
 
 ---
 
-## Phase 4 — Chat participant
+## Phase 4 — Chat participant ⬅ next
 
 *(was Phase 3 before rev 4)*
 

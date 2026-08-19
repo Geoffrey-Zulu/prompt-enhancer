@@ -1,0 +1,14 @@
+# Everything the .vsix does not need. The bundle in dist/ is self-contained —
+# tsup inlines the prompts package and all three provider SDKs (TDD §4) — so
+# node_modules must be excluded or the package carries three SDKs twice.
+node_modules/**
+src/**
+test/**
+.vscode/**
+**/*.ts
+!dist/**/*.d.ts
+**/*.map
+**/tsconfig*.json
+tsup.config.ts
+vitest.config.ts
+.vscodeignore

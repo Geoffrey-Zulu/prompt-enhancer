@@ -3,6 +3,7 @@ import * as vscode from 'vscode';
 import { log } from '../log.js';
 import { createClient, isImplemented } from '../providers/registry.js';
 import {
+  isProviderId,
   ModelError,
   PROVIDER_LABELS,
   type ModelClient,
@@ -67,11 +68,16 @@ export async function resolveClient(services: Services): Promise<ModelClient | u
 }
 
 /**
- * The active provider (§7): with one key stored, that is the provider; with
- * several, a remembered choice, else prompt once and remember. The
- * `promptEnhancer.provider` setting that outranks the remembered choice lands
- * with the other two adapters in Phase 3 — a contribution ships in the phase
- * that implements it.
+ * The active provider (§7), in order:
+ *
+ * 1. with exactly one key stored, that is the provider — no setting, no prompt;
+ * 2. the `promptEnhancer.provider` setting, if it names a provider with a key;
+ * 3. the remembered choice, if it still has a key;
+ * 4. otherwise prompt once and remember.
+ *
+ * A setting naming a provider with no key stored is *ignored rather than
+ * obeyed*: failing with "no key for OpenAI" when an Anthropic key is sitting
+ * right there would be a worse answer than using the key the user has.
  */
 async function resolveProvider(services: Services): Promise<ProviderId | undefined> {
   const stored = (await services.secrets.storedProviders()).filter(isImplemented);
@@ -86,6 +92,14 @@ async function resolveProvider(services: Services): Promise<ProviderId | undefin
     return only;
   }
 
+  const configured = vscode.workspace
+    .getConfiguration('promptEnhancer')
+    .get<string>('provider')
+    ?.trim();
+  if (configured !== undefined && isProviderId(configured) && stored.includes(configured)) {
+    return configured;
+  }
+
   const remembered = services.choices.getProvider();
   if (remembered !== undefined && stored.includes(remembered)) {
     return remembered;
@@ -93,12 +107,16 @@ async function resolveProvider(services: Services): Promise<ProviderId | undefin
 
   const picked = await vscode.window.showQuickPick(
     stored.map((provider) => ({ label: PROVIDER_LABELS[provider], provider })),
-    { title: 'Prompt Enhancer: which provider?', placeHolder: 'You have more than one key stored' },
+    {
+      title: 'Prompt Enhancer: which provider?',
+      placeHolder: 'You have more than one key stored',
+    },
   );
   if (picked === undefined) {
     return undefined;
   }
   await services.choices.setProvider(picked.provider);
+  log.info(`active provider set to ${picked.provider}`);
   return picked.provider;
 }
 
