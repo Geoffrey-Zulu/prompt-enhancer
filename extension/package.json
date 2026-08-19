@@ -2,6 +2,7 @@
   "name": "prompt-enhancer",
   "displayName": "Prompt Enhancer",
   "description": "Turn a rough thought into a prompt worth sending. Bring your own Anthropic, OpenAI or Google AI key.",
+  "icon": "media/logo.png",
   "version": "0.1.0",
   "private": true,
   "license": "MIT",
