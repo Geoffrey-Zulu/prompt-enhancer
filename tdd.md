@@ -58,7 +58,7 @@ entire setup.
 
 ## 3. Repository layout
 
-A pnpm workspace, local git repo. GitHub remote added when the repo exists.
+A pnpm workspace on `github.com/Geoffrey-Zulu/prompt-enhancer` (see §13 for the branch layout).
 
 ```
 prompt-enhancer/
@@ -466,12 +466,20 @@ golden runner and the manual pass spend real tokens.
 
 ## 13. Branching, CI, and publishing
 
-- **Branching:** `main` is protected and always releasable. All work happens on `feature/*` or
-  `fix/*` branches and lands via pull request — never pushed directly to `main`. No remote yet;
-  branches are local until the GitHub repo exists.
+- **Remote:** `github.com/Geoffrey-Zulu/prompt-enhancer` (private).
+- **Branching — three tiers, and `dev` is the one you work from:**
+  - **`main` holds production-ready code only.** It advances from `dev` at a release, never from a
+    feature branch, and is never pushed to directly. Until Phase 5 packages a `.vsix` there is
+    nothing production-ready to put on it, so it deliberately sits behind `dev`.
+  - **`dev` is the integration line and the repository's default branch**, so pull requests target
+    it without anyone having to remember to change the base.
+  - **`feature/*` and `fix/*` always branch from `dev`** and land back in `dev` via pull request.
+    Branching a feature from `main` would build on a release, not on the current state.
+  - A release is therefore one `dev` → `main` pull request, not a cherry-pick.
 - **Commits:** conventional commits (`feat:`, `fix:`, `docs:`, `chore:`).
-- **CI (once remote exists):** lint, typecheck, unit + integration tests on PR; `vsce package`
-  artifact on `main`. The eval runner is not in CI — it needs a real key.
+- **CI (Phase 5):** lint, typecheck, unit + integration tests on every pull request into `dev` and
+  `main`; `vsce package` artifact on `main` only, since that is the branch a release comes from. The
+  eval runner is not in CI — it needs a real key.
 - **Publishing:** VS Code Marketplace via `vsce`. Requires a publisher ID and a PAT — an external
   step for the repo owner.
 - **Privacy disclosure (required in the README and the Marketplace listing):** the text you select

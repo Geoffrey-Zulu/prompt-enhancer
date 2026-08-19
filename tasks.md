@@ -3,9 +3,10 @@
 Working task list for the build order in [tdd.md](tdd.md) §11. Read the TDD first; this file
 tracks state, not design. Section references below (§) point at the TDD.
 
-**Current state:** Phase 2 complete on branch `feature/phase-2-byok` (off `feature/phase-1-scaffold`).
-Nothing merged, no remote.
-**Next up:** Phase 3 — the other two providers.
+**Current state:** Phase 2 complete on `feature/phase-2-byok`, open as a pull request into `dev`.
+Remote is `github.com/Geoffrey-Zulu/prompt-enhancer`; `dev` holds Phase 1 and is the default branch;
+`main` holds the baseline only, because nothing is production-ready until Phase 5 packages a `.vsix`.
+**Next up:** Phase 3 — the other two providers. **Branch it from `dev`** (see tdd.md §13).
 
 > **Provider model, rev 4:** the extension supports **Anthropic, OpenAI, and Google AI** (D2), each
 > an adapter behind one `ModelClient` interface (§6). **No model ID is hardcoded** — models are
@@ -285,7 +286,11 @@ and cancellation stops it mid-stream.
 
 Cannot be done from a coding session:
 
-- [ ] Create the GitHub repo and add the remote (nothing is pushed yet)
+- [x] Create the GitHub repo and add the remote — `github.com/Geoffrey-Zulu/prompt-enhancer`,
+      private, `dev` as the default branch
+- [ ] **Protect `main`** (and require a PR into `dev`) — branch protection on a *private* repo needs
+      GitHub Pro or above, so this could not be set from a session. Until then the branch policy in
+      tdd.md §13 is a convention, not an enforced rule
 - [ ] **An API key per provider you want covered** — one is enough for Phase 2; all three are needed
       for Phase 3's acceptance and Phase 5's D10 eval run. Free or low-cost tiers are fine for
       development; the golden runs are cents, not dollars

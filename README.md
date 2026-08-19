@@ -84,5 +84,17 @@ alters behaviour means bumping `TEMPLATE_VERSION` — see TDD §5.
 
 ## Branching
 
-`main` is always releasable. Work happens on `feature/*` or `fix/*` and lands via pull request;
-nothing is pushed directly to `main`. No remote is configured yet.
+Three tiers, and `dev` is the one you work from — see tdd.md §13 for the reasoning.
+
+| Branch | What it holds |
+|---|---|
+| `main` | production-ready code only; advances from `dev` at a release, never from a feature branch |
+| `dev` | the integration line, and the repository's default branch so PRs target it automatically |
+| `feature/*`, `fix/*` | always branched **from `dev`**, and merged back into `dev` via pull request |
+
+```bash
+git checkout dev && git pull && git checkout -b feature/my-thing
+```
+
+`main` currently sits behind `dev` on purpose: nothing is production-ready until Phase 5 packages a
+`.vsix`.
