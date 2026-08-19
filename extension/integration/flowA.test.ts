@@ -14,7 +14,6 @@ import { applyEnhancement, documentMoved } from '../src/enhance/deliverToEditor.
  * APIs.
  */
 
-const EXTENSION_ID = 'TBD.prompt-enhancer';
 const ROUGH = 'fix the null check in findById';
 const ENHANCED = '## Role\nYou are a senior engineer.\n\n## Task\nFix the null check.\n';
 
@@ -57,6 +56,14 @@ function targetFor(fixture: Fixture): Parameters<typeof applyEnhancement>[0] {
   };
 }
 
+/** Found by package name, not `<publisher>.<name>` - the publisher changes. */
+async function activateExtension(): Promise<void> {
+  const found = vscode.extensions.all.find(
+    (candidate) => (candidate.packageJSON as { name?: string }).name === 'prompt-enhancer',
+  );
+  await found?.activate();
+}
+
 async function closeEverything(): Promise<void> {
   await vscode.commands.executeCommand('workbench.action.closeAllEditors');
 }
@@ -88,7 +95,7 @@ suite('Flow A- delivery to the editor', () => {
   suiteSetup(async () => {
     // Activated explicitly so the suite does not depend on the order mocha
     // happens to load files in- a test that only passes second is not a test.
-    await vscode.extensions.getExtension(EXTENSION_ID)?.activate();
+    await activateExtension();
   });
 
   teardown(async () => {
@@ -207,7 +214,7 @@ suite('chat delivery commands', () => {
     // package.json declares `onCommand:` activation events for them. Without
     // those, a chat button clicked after a window reload fails with "command not
     // found"- which is how this suite found that gap.
-    await vscode.extensions.getExtension(EXTENSION_ID)?.activate();
+    await activateExtension();
   });
 
   teardown(async () => {

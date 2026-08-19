@@ -1,11 +1,11 @@
 {
   "name": "prompt-enhancer",
   "displayName": "Prompt Enhancer",
-  "description": "Turn rough notes into structured, context-rich prompts- in the editor or in chat.",
-  "version": "0.0.1",
+  "description": "Turn a rough thought into a prompt worth sending. Bring your own Anthropic, OpenAI or Google AI key.",
+  "version": "0.1.0",
   "private": true,
-  "license": "UNLICENSED",
-  "publisher": "TBD",
+  "license": "MIT",
+  "publisher": "REPLACE-WITH-YOUR-PUBLISHER-ID",
   "engines": {
     "vscode": "^1.90.0",
     "node": ">=20"
@@ -13,7 +13,8 @@
   "categories": [
     "Other",
     "AI",
-    "Chat"
+    "Chat",
+    "Education"
   ],
   "keywords": [
     "prompt",
@@ -21,7 +22,10 @@
     "ai",
     "anthropic",
     "claude",
-    "chat"
+    "openai",
+    "chatgpt",
+    "gemini",
+    "llm"
   ],
   "main": "./dist/extension.js",
   "activationEvents": [
@@ -174,5 +178,13 @@
     "tsup": "^8.3.5",
     "typescript": "^5.6.3",
     "vitest": "^2.1.4"
-  }
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Geoffrey-Zulu/prompt-enhancer.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Geoffrey-Zulu/prompt-enhancer/issues"
+  },
+  "homepage": "https://github.com/Geoffrey-Zulu/prompt-enhancer#readme"
 }

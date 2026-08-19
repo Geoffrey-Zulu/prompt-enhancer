@@ -9,7 +9,21 @@ import * as vscode from 'vscode';
  * an activation that throws and leaves everything silently dead.
  */
 
-const EXTENSION_ID = 'TBD.prompt-enhancer';
+/**
+ * Found by package name rather than by `<publisher>.<name>`.
+ *
+ * The publisher changes: it was `TBD`, it is a placeholder until the Marketplace
+ * account exists, and it becomes the real id after that. A test that hardcodes it
+ * fails on a metadata edit that broke nothing, which is exactly the kind of
+ * false alarm that gets suites ignored.
+ */
+function findExtension(): vscode.Extension<unknown> {
+  const found = vscode.extensions.all.find(
+    (candidate) => (candidate.packageJSON as { name?: string }).name === 'prompt-enhancer',
+  );
+  assert.ok(found, 'the prompt-enhancer extension is not loaded');
+  return found;
+}
 
 /** Contributed to the palette, so each one needs a declaration *and* a handler. */
 const PALETTE_COMMANDS = [
@@ -26,15 +40,14 @@ const INTERNAL_COMMANDS = ['promptEnhancer.insertResult', 'promptEnhancer.copyRe
 
 suite('activation and contributions', () => {
   test('the extension is present and activates', async () => {
-    const extension = vscode.extensions.getExtension(EXTENSION_ID);
-    assert.ok(extension, `extension ${EXTENSION_ID} not found`);
+    const extension = findExtension();
 
     await extension.activate();
     assert.equal(extension.isActive, true);
   });
 
   test('every command it contributes has a handler', async () => {
-    await vscode.extensions.getExtension(EXTENSION_ID)?.activate();
+    await findExtension().activate();
     const registered = new Set(await vscode.commands.getCommands(true));
 
     for (const command of [...PALETTE_COMMANDS, ...INTERNAL_COMMANDS]) {
@@ -46,8 +59,7 @@ suite('activation and contributions', () => {
     // A declaration with no handler is a palette entry that errors when clicked;
     // a handler with no declaration is a feature nobody can find. The
     // contribution rule in §11 is about exactly this pair.
-    const extension = vscode.extensions.getExtension(EXTENSION_ID);
-    assert.ok(extension);
+    const extension = findExtension();
 
     const contributed = (
       extension.packageJSON as { contributes?: { commands?: Array<{ command: string }> } }
@@ -59,8 +71,7 @@ suite('activation and contributions', () => {
   test('the panel view id matches the provider registration exactly', () => {
     // A mismatch here is a view that renders nothing, with no error anywhere-
     // the same class of failure the removed chat participant had.
-    const extension = vscode.extensions.getExtension(EXTENSION_ID);
-    assert.ok(extension);
+    const extension = findExtension();
 
     const views = (
       extension.packageJSON as {
@@ -77,8 +88,7 @@ suite('activation and contributions', () => {
     // Removed deliberately: `chatParticipants` registers into VS Code's native
     // chat panel, which only exists with GitHub Copilot Chat installed. Users on
     // Claude Code or ChatGPT saw nothing at all, with no way to find out why.
-    const extension = vscode.extensions.getExtension(EXTENSION_ID);
-    assert.ok(extension);
+    const extension = findExtension();
 
     assert.equal(
       (extension.packageJSON as { contributes?: Record<string, unknown> }).contributes?.[
@@ -89,8 +99,7 @@ suite('activation and contributions', () => {
   });
 
   test('the keybinding is the D7 one, gated on a selection', () => {
-    const extension = vscode.extensions.getExtension(EXTENSION_ID);
-    assert.ok(extension);
+    const extension = findExtension();
 
     const keybindings = (
       extension.packageJSON as {

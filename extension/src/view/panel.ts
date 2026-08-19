@@ -11,6 +11,7 @@ import {
 import { describeFailure } from '../enhance/report.js';
 import { resolveSession, type EnhanceSession } from '../enhance/session.js';
 import { log } from '../log.js';
+import { isImplemented } from '../providers/registry.js';
 import { CancelledError, PROVIDER_LABELS } from '../providers/types.js';
 import type { Services } from '../services/index.js';
 
@@ -53,6 +54,28 @@ export class PromptEnhancerViewProvider implements vscode.WebviewViewProvider {
       this.inFlight?.abort();
       this.view = undefined;
     });
+
+    void this.postState();
+  }
+
+  /**
+   * Tells the panel which key and model are in play, so it can say so and offer
+   * the right button.
+   *
+   * The panel is the only surface a user who has never opened the command
+   * palette will find. Telling them "add an API key" without giving them a way to
+   * do it, which is what the first version did, is a dead end.
+   */
+  private async postState(): Promise<void> {
+    const stored = (await this.services.secrets.storedProviders()).filter(isImplemented);
+    const provider = stored[0];
+
+    this.post({
+      type: 'state',
+      hasKey: stored.length > 0,
+      providers: stored.map((id) => PROVIDER_LABELS[id]),
+      model: provider === undefined ? undefined : this.services.choices.getModel(provider),
+    });
   }
 
   /** Reveals the view and drops text into its input- used by the palette command. */
@@ -87,6 +110,21 @@ export class PromptEnhancerViewProvider implements vscode.WebviewViewProvider {
         if (typeof request.text === 'string' && request.text.length > 0) {
           await vscode.commands.executeCommand('promptEnhancer.insertResult', request.text);
         }
+        return;
+      case 'setApiKey':
+        await vscode.commands.executeCommand('promptEnhancer.setApiKey');
+        await this.postState();
+        return;
+      case 'selectModel':
+        await vscode.commands.executeCommand('promptEnhancer.selectModel');
+        await this.postState();
+        return;
+      case 'clearApiKey':
+        await vscode.commands.executeCommand('promptEnhancer.clearApiKey');
+        await this.postState();
+        return;
+      case 'refresh':
+        await this.postState();
         return;
       default:
         return;
@@ -264,11 +302,33 @@ export class PromptEnhancerViewProvider implements vscode.WebviewViewProvider {
   }
   #status { min-height: 18px; margin-top: 8px; font-size: 0.9em; opacity: 0.85; }
   #status.error { color: var(--vscode-errorForeground); opacity: 1; }
+  #statusAction { margin-left: 8px; padding: 2px 8px; font-size: 0.9em; }
+  #setup {
+    margin: 0 0 12px;
+    padding: 8px 10px;
+    border: 1px solid var(--vscode-panel-border, rgba(128,128,128,0.35));
+    border-radius: 3px;
+    background: var(--vscode-editorWidget-background, transparent);
+  }
+  #setup.needsKey { border-color: var(--vscode-inputValidation-warningBorder, #cca700); }
+  #setupSummary { font-size: 0.9em; opacity: 0.85; }
+  #setupSummary strong { opacity: 1; }
+  #setup .row { margin-top: 8px; }
+  #setup button { padding: 3px 10px; font-size: 0.9em; }
   .hint { opacity: 0.7; font-size: 0.9em; margin-top: 10px; line-height: 1.45; }
   .hidden { display: none; }
 </style>
 </head>
 <body>
+  <div id="setup">
+    <div id="setupSummary">Checking your setup…</div>
+    <div class="row">
+      <button id="setKey" class="secondary">Set API key</button>
+      <button id="changeModel" class="secondary">Change model</button>
+      <button id="clearKey" class="secondary">Clear key</button>
+    </div>
+  </div>
+
   <label for="rough">Rough prompt</label>
   <textarea id="rough" placeholder="fix the landing page, make it so good"></textarea>
 
@@ -280,7 +340,7 @@ export class PromptEnhancerViewProvider implements vscode.WebviewViewProvider {
     </div>
   </div>
 
-  <div id="status"></div>
+  <div id="status"><span id="statusText"></span><button id="statusAction" class="hidden"></button></div>
 
   <label for="result">Enhanced prompt</label>
   <textarea id="result" spellcheck="false" placeholder="The result appears here, and is copied to your clipboard."></textarea>
@@ -311,12 +371,49 @@ export class PromptEnhancerViewProvider implements vscode.WebviewViewProvider {
   result.addEventListener('input', save);
   mode.addEventListener('change', save);
 
-  const setStatus = (text, isError) => {
-    status.textContent = text;
-    status.className = isError ? 'error' : '';
+  const statusText = document.getElementById('statusText');
+  const statusAction = document.getElementById('statusAction');
+  const setup = document.getElementById('setup');
+  const setupSummary = document.getElementById('setupSummary');
+  const changeModel = document.getElementById('changeModel');
+  const clearKey = document.getElementById('clearKey');
+
+  // Every action the §9.4 table can offer, mapped to something the panel can do.
+  // Rendering the action as text in brackets, which is what the first version
+  // did, tells the user what to do and gives them no way to do it.
+  const ACTIONS = {
+    'Set API Key': 'setApiKey',
+    'Select Model': 'selectModel',
   };
+
+  const setStatus = (text, isError, action) => {
+    statusText.textContent = text;
+    status.className = isError ? 'error' : '';
+
+    const known = action && ACTIONS[action];
+    statusAction.classList.toggle('hidden', !known);
+    if (known) {
+      statusAction.textContent = action;
+      statusAction.dataset.send = ACTIONS[action];
+    }
+  };
+
+  statusAction.addEventListener('click', () => {
+    const send = statusAction.dataset.send;
+    if (send) { vscode.postMessage({ type: send }); }
+  });
+
+  document.getElementById('setKey').addEventListener('click', () =>
+    vscode.postMessage({ type: 'setApiKey' }));
+  changeModel.addEventListener('click', () =>
+    vscode.postMessage({ type: 'selectModel' }));
+  clearKey.addEventListener('click', () =>
+    vscode.postMessage({ type: 'clearApiKey' }));
+  // Whether a key is stored gates Enhance independently of whether a request is
+  // running, so the two must not fight over the same disabled flag.
+  let hasKey = false;
   const setRunning = (running) => {
-    enhance.disabled = running;
+    enhance.disabled = running || !hasKey;
     cancel.classList.toggle('hidden', !running);
   };
 
@@ -347,6 +444,24 @@ export class PromptEnhancerViewProvider implements vscode.WebviewViewProvider {
   window.addEventListener('message', (event) => {
     const message = event.data;
     switch (message.type) {
+      case 'state': {
+        hasKey = Boolean(message.hasKey);
+        const noKey = !hasKey;
+        setup.classList.toggle('needsKey', noKey);
+        changeModel.disabled = noKey;
+        clearKey.disabled = noKey;
+        setRunning(false);
+        if (noKey) {
+          setupSummary.textContent =
+            'No API key yet. Add one from Anthropic, OpenAI or Google AI to get started.';
+        } else {
+          const where = message.providers.join(', ');
+          setupSummary.innerHTML = 'Using <strong></strong>';
+          setupSummary.querySelector('strong').textContent =
+            where + (message.model ? ' · ' + message.model : ' · model not chosen yet');
+        }
+        break;
+      }
       case 'prefill':
         rough.value = message.text;
         save();
@@ -373,7 +488,7 @@ export class PromptEnhancerViewProvider implements vscode.WebviewViewProvider {
         break;
       case 'failed':
         setRunning(false);
-        setStatus(message.message + (message.action ? ' (' + message.action + ')' : ''), true);
+        setStatus(message.message, true, message.action);
         break;
     }
   });

@@ -14,6 +14,9 @@ integration/**
 **/*.ts
 !dist/**/*.d.ts
 !media/**
+# LICENSE and CHANGELOG are shown on the Marketplace listing.
+!LICENSE
+!CHANGELOG.md
 **/*.map
 **/tsconfig*.json
 tsup.config.ts
