@@ -190,19 +190,32 @@ export async function reportFailure(
 
   // Branched rather than picking the function into a variable: TypeScript
   // cannot call a union of two overloaded signatures.
-  const chosen = await (severity === 'info'
+  const shown = severity === 'info'
     ? action === undefined
       ? vscode.window.showInformationMessage(prefixed)
       : vscode.window.showInformationMessage(prefixed, action)
     : action === undefined
       ? vscode.window.showErrorMessage(prefixed)
-      : vscode.window.showErrorMessage(prefixed, action));
+      : vscode.window.showErrorMessage(prefixed, action);
 
+  // **Deliberately not awaited.** A notification carrying a button does not
+  // settle until the user clicks it or it times out, so awaiting it here means
+  // the command that called us does not finish until someone dismisses a toast —
+  // and `executeCommand` hangs for anything driving the extension. The message is
+  // already on screen by this point; the action is handled when and if it comes.
+  //
   // Compared against `action` rather than cast: the only thing the user can pick
-  // is the one button we offered, and this way the narrowing proves it.
-  if (action !== undefined && chosen === action) {
-    await runAction(action, context);
-  }
+  // is the one button we offered, and the comparison is what proves it.
+  void Promise.resolve(shown).then(
+    async (chosen) => {
+      if (action !== undefined && chosen === action) {
+        await runAction(action, context);
+      }
+    },
+    (error: unknown) => {
+      log.error('failed to show a notification', error);
+    },
+  );
 }
 
 /**

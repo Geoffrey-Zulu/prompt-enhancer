@@ -6,8 +6,12 @@
   "license": "UNLICENSED",
   "type": "module",
   "scripts": {
+    "deps": "pnpm --filter @prompt-enhancer/prompts build",
+    "preeval": "pnpm run deps",
     "eval": "tsx src/run.ts",
+    "pretypecheck": "pnpm run deps",
     "typecheck": "tsc --noEmit",
+    "pretest": "pnpm run deps",
     "test": "vitest run"
   },
   "dependencies": {
