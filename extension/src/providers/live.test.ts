@@ -20,7 +20,7 @@ import { PROVIDER_LABELS, type ModelClient, type ProviderId } from './types.js';
  *   ANTHROPIC_API_KEY=sk-ant-... \
  *   OPENAI_API_KEY=sk-... \
  *   GOOGLE_API_KEY=AIza... \
- *   pnpm --filter prompt-enhancer test:live
+ *   pnpm --filter prompt-enhancer-byok test:live
  * ```
  *
  * Every provider whose key is absent is skipped and named in the output, so a

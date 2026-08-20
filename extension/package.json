@@ -1,5 +1,5 @@
 {
-  "name": "prompt-enhancer",
+  "name": "prompt-enhancer-byok",
   "displayName": "Prompt Enhancer",
   "description": "Turn a rough thought into a prompt worth sending. Bring your own Anthropic, OpenAI or Google AI key.",
   "icon": "media/logo.png",

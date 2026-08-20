@@ -19,7 +19,7 @@ import * as vscode from 'vscode';
  */
 function findExtension(): vscode.Extension<unknown> {
   const found = vscode.extensions.all.find(
-    (candidate) => (candidate.packageJSON as { name?: string }).name === 'prompt-enhancer',
+    (candidate) => (candidate.packageJSON as { name?: string }).name === 'prompt-enhancer-byok',
   );
   assert.ok(found, 'the prompt-enhancer extension is not loaded');
   return found;

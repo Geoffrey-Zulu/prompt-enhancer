@@ -59,7 +59,7 @@ function targetFor(fixture: Fixture): Parameters<typeof applyEnhancement>[0] {
 /** Found by package name, not `<publisher>.<name>` - the publisher changes. */
 async function activateExtension(): Promise<void> {
   const found = vscode.extensions.all.find(
-    (candidate) => (candidate.packageJSON as { name?: string }).name === 'prompt-enhancer',
+    (candidate) => (candidate.packageJSON as { name?: string }).name === 'prompt-enhancer-byok',
   );
   await found?.activate();
 }

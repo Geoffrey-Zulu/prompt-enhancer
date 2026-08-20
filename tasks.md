@@ -11,7 +11,7 @@ default branch and holds Phases 1–4; `main` holds the baseline only.
 **Two acceptance bars are unmet, and neither can be met from a coding session:**
 
 - **Phase 3** needs an OpenAI key and a Google AI key to enhance the same text through all three
-  providers. The check is written: `pnpm --filter prompt-enhancer test:live`.
+  providers. The check is written: `pnpm --filter prompt-enhancer-byok test:live`.
 - **Phase 5's D10 run** needs the same three keys to record three pass rates:
   `pnpm --filter @prompt-enhancer/evals run eval -- --provider <id>`.
 
@@ -46,7 +46,7 @@ pnpm --filter @prompt-enhancer/prompts test
 ```
 
 ```bash
-pnpm --filter prompt-enhancer test
+pnpm --filter prompt-enhancer-byok test
 ```
 
 Then press <kbd>F5</kbd> ("Run Extension"), run **Prompt Enhancer: Set API Key** with an Anthropic
@@ -231,7 +231,7 @@ structured prompt in one undo step; every failure path leaves the buffer exactly
 - `promptEnhancer.model` is contributed as a setting (§6 resolution step 1).
   `promptEnhancer.provider` is **not**- it belongs to Phase 3, where a second key makes it
   meaningful. Until then the provider is prompt-once-and-remember via `ChoiceStore`.
-- **47 unit tests** in `extension` (`pnpm --filter prompt-enhancer test`), on top of the 6 in
+- **47 unit tests** in `extension` (`pnpm --filter prompt-enhancer-byok test`), on top of the 6 in
   `packages/prompts`. `vitest.config.ts` aliases the host-injected `vscode` module to
   `extension/test/stubs/vscode.ts`.
   - `anthropic.request.test.ts` stubs global `fetch` and asserts the **body actually sent**: no
@@ -350,7 +350,7 @@ harmlessly in a `.vsix` that has no `node_modules`. Verified, not assumed.
       key sitting in a shell for another reason cannot turn `pnpm test` into a bill:
 
       ```bash
-      PROMPT_ENHANCER_LIVE=1         ANTHROPIC_API_KEY=sk-ant-...         OPENAI_API_KEY=sk-...         GOOGLE_API_KEY=AIza...         pnpm --filter prompt-enhancer test:live
+      PROMPT_ENHANCER_LIVE=1         ANTHROPIC_API_KEY=sk-ant-...         OPENAI_API_KEY=sk-...         GOOGLE_API_KEY=AIza...         pnpm --filter prompt-enhancer-byok test:live
       ```
 
       It names any provider it did not cover and **fails** on a partial run- "two of three work" is
@@ -525,7 +525,7 @@ Cannot be done from a coding session:
 
       ```bash
       # Phase 3 acceptance: the same text through all three providers.
-      PROMPT_ENHANCER_LIVE=1 ANTHROPIC_API_KEY=… OPENAI_API_KEY=… GOOGLE_API_KEY=…         pnpm --filter prompt-enhancer test:live
+      PROMPT_ENHANCER_LIVE=1 ANTHROPIC_API_KEY=… OPENAI_API_KEY=… GOOGLE_API_KEY=…         pnpm --filter prompt-enhancer-byok test:live
 
       # Phase 5 / D10: one run per provider, three pass rates to record.
       ANTHROPIC_API_KEY=… pnpm --filter @prompt-enhancer/evals run eval -- --provider anthropic
