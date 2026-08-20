@@ -46,7 +46,7 @@ jobs:
         # `pnpm -r typecheck` does not cover extension/integration/- that code is
         # emitted rather than checked in place, so its tsconfig is the thing that
         # checks it.
-        run: pnpm --filter prompt-enhancer run compile:integration
+        run: pnpm --filter prompt-enhancer-byok run compile:integration
 
   integration:
     name: Integration tests (real VS Code)
@@ -68,7 +68,7 @@ jobs:
 
       - name: Integration tests
         # VS Code needs a display; xvfb provides one on a headless runner.
-        run: xvfb-run -a pnpm --filter prompt-enhancer run test:integration
+        run: xvfb-run -a pnpm --filter prompt-enhancer-byok run test:integration
 
   package:
     name: Package the .vsix
@@ -93,7 +93,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
 
       - name: Build and package
-        run: pnpm --filter prompt-enhancer run package
+        run: pnpm --filter prompt-enhancer-byok run package
 
       - uses: actions/upload-artifact@v4
         with:

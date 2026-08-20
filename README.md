@@ -60,7 +60,7 @@ pnpm --filter @prompt-enhancer/prompts test
 ```
 
 ```bash
-pnpm --filter prompt-enhancer test
+pnpm --filter prompt-enhancer-byok test
 ```
 
 The extension's unit suite (119 tests) covers what must be right before an editor is involved:
@@ -78,7 +78,7 @@ APIs and is Phase 3's acceptance criterion made runnable. It needs a key per pro
 flag, so a key sitting in your shell for another reason cannot turn `pnpm test` into a bill:
 
 ```bash
-PROMPT_ENHANCER_LIVE=1 ANTHROPIC_API_KEY=... OPENAI_API_KEY=... GOOGLE_API_KEY=...   pnpm --filter prompt-enhancer test:live
+PROMPT_ENHANCER_LIVE=1 ANTHROPIC_API_KEY=... OPENAI_API_KEY=... GOOGLE_API_KEY=...   pnpm --filter prompt-enhancer-byok test:live
 ```
 
 It names any provider it could not cover and fails on a partial run.
@@ -86,7 +86,7 @@ It names any provider it could not cover and fails on a partial run.
 ### Integration tests
 
 ```bash
-pnpm --filter prompt-enhancer test:integration
+pnpm --filter prompt-enhancer-byok test:integration
 ```
 
 Downloads a real VS Code and runs 17 tests inside it- the single-undo-step replace, the
